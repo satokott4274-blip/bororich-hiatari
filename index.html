@@ -105,6 +105,37 @@
   .cta a{display:block;background:#06C755;color:#fff;text-decoration:none;font-weight:900;
     padding:14px;border-radius:10px;font-size:14.5px}
   footer{background:var(--navy2);color:#8FA3BC;font-size:10.5px;padding:16px 18px 24px;line-height:1.7}
+  /* ===== 地図 ===== */
+  .maparea{position:relative;width:100%;height:330px;border-radius:12px;overflow:hidden;
+    background:#DDE3EA;border:1.5px solid var(--line);touch-action:none;cursor:crosshair;user-select:none}
+  .maparea #tiles{position:absolute;inset:0;will-change:transform}
+  .maparea #tiles img{position:absolute;width:256px;height:256px;pointer-events:none;display:block}
+  .maparea svg.ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  .mapbar{display:flex;gap:6px;margin-top:8px}
+  .mapbar button{flex:1;border:1.5px solid var(--line);background:#fff;border-radius:9px;padding:9px 2px;
+    font-size:12.5px;font-weight:800;color:var(--navy);cursor:pointer;font-family:inherit}
+  .mapbar button.on{border-color:var(--orange);background:var(--yellow-bg)}
+  .zoomer{position:absolute;right:8px;bottom:8px;display:flex;flex-direction:column;gap:4px;z-index:3}
+  .zoomer button{width:34px;height:34px;border-radius:8px;border:none;background:rgba(27,42,65,.85);
+    color:#fff;font-size:19px;font-weight:800;cursor:pointer;font-family:inherit;line-height:1}
+  .layerbtn{position:absolute;left:8px;bottom:8px;z-index:3;border:none;border-radius:8px;
+    background:rgba(27,42,65,.85);color:#fff;font-size:11.5px;font-weight:800;padding:7px 10px;cursor:pointer;font-family:inherit}
+  .attr{position:absolute;right:4px;top:4px;z-index:3;background:rgba(255,255,255,.8);
+    font-size:9px;color:#5D6D7E;padding:1px 5px;border-radius:4px}
+  .hintbar{background:var(--yellow-bg);border-radius:9px;padding:9px 11px;font-size:12px;
+    margin-top:8px;line-height:1.5;border-left:4px solid var(--orange)}
+  .bldlist{margin-top:10px}
+  .bldrow{display:flex;align-items:center;gap:6px;border:1.5px solid var(--line);border-radius:9px;
+    padding:7px 8px;margin-bottom:6px;background:#fff}
+  .bldrow .no{width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:11px;
+    font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .bldrow select{flex:1;min-width:0;border:1px solid var(--line);border-radius:7px;padding:6px 4px;
+    font-size:12.5px;font-family:inherit;color:var(--navy);background:#fff}
+  .bldrow .dst{font-size:10.5px;color:var(--gray);flex-shrink:0;width:46px;text-align:right;line-height:1.25}
+  .bldrow .del{border:none;background:none;color:var(--red);font-size:17px;font-weight:800;
+    cursor:pointer;padding:0 4px;flex-shrink:0;font-family:inherit}
+  .culprit{background:var(--red-bg);border-radius:9px;padding:10px 12px;font-size:12.5px;
+    margin-top:10px;line-height:1.6}
 </style>
 </head>
 <body>
@@ -117,13 +148,100 @@
 </header>
 
 <nav>
-  <button class="on" data-t="t1">☀️ 日当たり判定</button>
-  <button data-t="t2">🧭 窓の向き比較</button>
-  <button data-t="t3">📖 数字の読み方</button>
+  <button class="on" data-t="t0">🗺 地図で判定</button>
+  <button data-t="t1">☀️ 手入力</button>
+  <button data-t="t2">🧭 向き比較</button>
+  <button data-t="t3">📖 読み方</button>
 </nav>
 
+<!-- ============ TAB0 地図 ============ -->
+<section id="t0" class="on">
+
+  <div class="sec-title"><span class="num">1</span>物件の住所を入れる</div>
+  <div class="sec-sub">航空写真が出ます。番地まで入れるとより正確です。</div>
+  <div class="searchrow">
+    <input id="maddr" type="text" placeholder="例）茨城県牛久市岡見町" autocomplete="off">
+    <button id="mgo">検索</button>
+  </div>
+
+  <div class="sec-title" style="margin-top:20px"><span class="num">2</span>家と、周りの建物をタップ</div>
+  <div class="sec-sub">屋根の形で階数がわかります。迷ったらストリートビューで確認を。</div>
+
+  <div class="maparea" id="maparea">
+    <div id="tiles"></div>
+    <svg class="ov" id="ov" preserveAspectRatio="none"></svg>
+    <div class="attr">地理院タイル（航空写真）</div>
+    <button class="layerbtn" id="layerBtn">地図に切替</button>
+    <div class="zoomer"><button id="zin">＋</button><button id="zout">−</button></div>
+  </div>
+  <div class="mapbar">
+    <button id="modeHouse">🏠 家の位置</button>
+    <button id="modeBld" class="on">🏢 建物を置く</button>
+    <button id="clearBld">🗑 全部消す</button>
+  </div>
+  <div class="hintbar" id="hint"></div>
+
+  <div class="bldlist" id="bldlist"></div>
+
+  <div class="q-label">調べる窓の向き <span>家ピンの矢印の向き</span></div>
+  <div class="grid four" id="mdirGrid">
+    <button class="pick p-mdir" data-az="0">北</button>
+    <button class="pick p-mdir" data-az="45">北東</button>
+    <button class="pick p-mdir" data-az="90">東</button>
+    <button class="pick p-mdir" data-az="135">南東</button>
+    <button class="pick p-mdir sel" data-az="180">南</button>
+    <button class="pick p-mdir" data-az="225">南西</button>
+    <button class="pick p-mdir" data-az="270">西</button>
+    <button class="pick p-mdir" data-az="315">北西</button>
+  </div>
+  <div class="grid two" id="mfloorGrid" style="margin-top:7px">
+    <button class="pick p-mfloor sel" data-h="1">1階の窓</button>
+    <button class="pick p-mfloor" data-h="4">2階の窓</button>
+  </div>
+
+  <div class="q-label">いつの日当たりを見るか</div>
+  <div class="grid four" id="mseaGrid">
+    <button class="pick p-msea sel" data-s="w">冬至<small>12/21</small></button>
+    <button class="pick p-msea" data-s="e">春秋分<small>3/21</small></button>
+    <button class="pick p-msea" data-s="s">夏至<small>6/21</small></button>
+    <button class="pick p-msea" data-s="t">今日</button>
+  </div>
+
+  <div class="q-label">時刻 <span>影が動きます</span></div>
+  <input class="slider" id="mtslider" type="range" min="0" max="1439" step="5" value="720">
+  <div class="sv" id="mtV">12:00<span id="mtSun"></span></div>
+
+  <div class="verdict" id="mverdict">
+    <div class="cap" id="mvCap"></div>
+    <div class="rank" id="mvRank">判定</div>
+    <div class="hours" id="mvHours">—</div>
+    <div class="kv">
+      <div><div class="k">日が入る時間帯</div><div class="v" id="mvSpan">—</div></div>
+      <div><div class="k">8〜16時のうち</div><div class="v" id="mvReg">—</div></div>
+    </div>
+    <div class="note" id="mvNote"></div>
+  </div>
+
+  <div id="mculprit"></div>
+
+  <div class="figbox">
+    <div class="figcap">1日の日当たり（日の出→日の入り）</div>
+    <svg id="mtimeline" viewBox="0 0 400 92"></svg>
+    <div class="legend">
+      <span><i style="background:var(--sun)"></i>日が入る</span>
+      <span><i style="background:var(--shade)"></i>影・朝夕の低すぎる日</span>
+      <span><i style="background:#DDE3EA"></i>太陽が窓の裏側</span>
+    </div>
+  </div>
+
+  <div class="warn" style="background:var(--light);border-left-color:var(--gray)">
+    <b>使い方のコツ。</b>まず家の位置を合わせ、次に<b>南側の建物から順に</b>タップしてください。影を作るのはほぼ南側の建物です。空地や駐車場も「もし建ったら」で置いてみると、将来のリスクが見えます。
+  </div>
+
+</section>
+
 <!-- ============ TAB1 ============ -->
-<section id="t1" class="on">
+<section id="t1">
 
   <div class="sec-title"><span class="num">1</span>物件の場所</div>
   <div class="sec-sub">関東1都6県。番地まで入れなくても、市区町村までで十分です。</div>
@@ -405,7 +523,7 @@ function segText(segs){
 
 /* ===== 描画 ===== */
 const COL={1:"#F5A623",2:"#7B8FA8",3:"#DDE3EA"};
-function drawTimeline(r){
+function drawTimeline(r,tid){
   const W=400,x0=32,x1=392,y=30,h=26;
   const a=Math.max(0,(r.rise??300)-30), b=Math.min(1439,(r.set??1140)+30);
   const px=t=>x0+(t-a)/(b-a)*(x1-x0);
@@ -430,7 +548,7 @@ function drawTimeline(r){
   const cx=px(S.t);
   s+=`<line x1="${cx.toFixed(1)}" y1="${y-2}" x2="${cx.toFixed(1)}" y2="${y+h+2}" stroke="#1B2A41" stroke-width="2"/>`;
   s+=`<text x="200" y="88" font-size="9.5" fill="#5D6D7E" text-anchor="middle">太陽高度5度以下の朝夕の斜光は、日照に数えていません</text>`;
-  document.getElementById("timeline").innerHTML=s;
+  document.getElementById(tid||"timeline").innerHTML=s;
 }
 
 function drawSection(dt){
@@ -670,7 +788,7 @@ async function search(){
     S.name=j[0].properties.title;
     document.querySelectorAll(".p-pref").forEach(x=>x.classList.remove("sel"));
     el.innerHTML='現在の地点：<b id="placeName"></b>　<span id="placeLL"></span>';
-    showPlace();update();
+    showPlace();update();syncMapToPlace();
   }catch(err){
     el.innerHTML='通信できませんでした。下のボタンから都県を選んでください。';
   }
@@ -678,7 +796,318 @@ async function search(){
 document.getElementById("go").addEventListener("click",search);
 document.getElementById("addr").addEventListener("keydown",e=>{if(e.key==="Enter")search();});
 
-showPlace();update();
+
+/* ================= 地図モード ================= */
+const MAP={lat:35.6895,lon:139.6917,z:18,layer:"seamlessphoto",W:340,H:330};
+const MO={house:null,blds:[],mode:"bld"};
+const HOPT=[["平屋",4],["2階建て",6.5],["3階建て",9.5],["4〜5階",14],["6階以上",25]];
+const WOPT=[["幅6m",6],["幅9m",9],["幅14m",14],["幅22m",22]];
+const hName=h=>(HOPT.find(o=>o[1]==h)||["建物"])[0];
+
+function worldPx(lat,lon,z){
+  const s=256*Math.pow(2,z), sy=Math.sin(lat*RAD);
+  return [(lon+180)/360*s,(0.5-Math.log((1+sy)/(1-sy))/(4*Math.PI))*s];
+}
+function pxToLatLon(x,y,z){
+  const s=256*Math.pow(2,z), lon=x/s*360-180, n=Math.PI-2*Math.PI*y/s;
+  return [DEG*Math.atan(0.5*(Math.exp(n)-Math.exp(-n))),lon];
+}
+const mpp=()=>156543.03392804097*Math.cos(MAP.lat*RAD)/Math.pow(2,MAP.z);
+function scr(lat,lon){
+  const[x,y]=worldPx(lat,lon,MAP.z),[cx,cy]=worldPx(MAP.lat,MAP.lon,MAP.z);
+  return[x-cx+MAP.W/2,y-cy+MAP.H/2];
+}
+function offM(a,b){ // a基準のbの位置 [東m,北m]
+  return [(b.lon-a.lon)*RAD*6378137*Math.cos(a.lat*RAD),(b.lat-a.lat)*RAD*6378137];
+}
+const distM=(a,b)=>{const[e,n]=offM(a,b);return Math.hypot(e,n);};
+const bearing=(a,b)=>{const[e,n]=offM(a,b);return (Math.atan2(e,n)*DEG+360)%360;};
+const dir8=az=>DIRNAME[[0,45,90,135,180,225,270,315].reduce((p,c)=>Math.abs(angDiff(az,c))<Math.abs(angDiff(az,p))?c:p,0)];
+
+/* 光線(単位ベクトル)が 長さL のあいだに 軸並行の正方形と交わるか */
+function segHitsRect(ue,un,L,ce,cn,half){
+  let t0=0,t1=L;
+  const d=[ue,un],lo=[ce-half,cn-half],hi=[ce+half,cn+half];
+  for(let i=0;i<2;i++){
+    if(Math.abs(d[i])<1e-9){if(0<lo[i]||0>hi[i])return false;continue;}
+    let a=lo[i]/d[i],b=hi[i]/d[i];
+    if(a>b){const t=a;a=b;b=t;}
+    t0=Math.max(t0,a);t1=Math.min(t1,b);
+    if(t0>t1)return false;
+  }
+  return true;
+}
+function hull(pts){
+  pts=pts.slice().sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+  const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);
+  const lo=[],up=[];
+  for(const p of pts){while(lo.length>=2&&cr(lo[lo.length-2],lo[lo.length-1],p)<=0)lo.pop();lo.push(p);}
+  for(let i=pts.length-1;i>=0;i--){const p=pts[i];while(up.length>=2&&cr(up[up.length-2],up[up.length-1],p)<=0)up.pop();up.push(p);}
+  lo.pop();up.pop();return lo.concat(up);
+}
+
+function calcDayMap(dt){
+  const arr=new Uint8Array(1440),h=MO.house,blocks=MO.blds.map(()=>0);
+  if(!h)return{arr,segs:[],sunMin:0,regMin:0,rise:null,set:null,peak:0,peakMin:720,blocks};
+  const B=MO.blds.map(b=>{const[e,n]=offM(h,b);return{e,n,half:b.w/2,H:Math.max(0,b.h-S.sill)};});
+  let rise=null,set=null,peak=-90,peakMin=720;
+  for(let t=0;t<1440;t++){
+    const p=sunPos(dt,t,h.lat,h.lon);
+    if(p.alt>peak){peak=p.alt;peakMin=t;}
+    if(p.alt<=-0.833){arr[t]=0;continue;}
+    if(rise===null)rise=t; set=t;
+    if(p.alt<MIN_ALT){arr[t]=2;continue;}
+    if(Math.abs(angDiff(p.az,S.winAz))>=90){arr[t]=3;continue;}
+    const ue=Math.sin(p.az*RAD),un=Math.cos(p.az*RAD),tn=Math.tan(p.alt*RAD);
+    let blocked=false;
+    for(let i=0;i<B.length;i++){
+      if(B[i].H<=0)continue;
+      if(segHitsRect(ue,un,B[i].H/tn,B[i].e,B[i].n,B[i].half)){blocked=true;blocks[i]++;}
+    }
+    arr[t]=blocked?2:1;
+  }
+  const segs0=[];let st=null;
+  for(let t=0;t<=1440;t++){
+    const on=t<1440&&arr[t]===1;
+    if(on&&st===null)st=t;
+    if(!on&&st!==null){
+      if(segs0.length&&st-segs0[segs0.length-1][1]<=20)segs0[segs0.length-1][1]=t;
+      else segs0.push([st,t]);
+      st=null;
+    }
+  }
+  const segs=segs0.filter(g=>g[1]-g[0]>=10);
+  segs0.filter(g=>g[1]-g[0]<10).forEach(g=>{for(let t=g[0];t<g[1];t++)arr[t]=2;});
+  segs.forEach(g=>{for(let t=g[0];t<g[1];t++)if(arr[t]!==1)arr[t]=2;});
+  const sunMin=segs.reduce((a,g)=>a+(g[1]-g[0]),0);
+  let regMin=0;segs.forEach(g=>regMin+=Math.max(0,Math.min(g[1],960)-Math.max(g[0],480)));
+  return{arr,segs,sunMin,regMin,rise,set,peak,peakMin,blocks};
+}
+
+/* ---- タイル描画 ---- */
+const ma=document.getElementById("maparea"),tilesEl=document.getElementById("tiles");
+let RENDER={left:0,top:0};
+function mapResize(){if(ma.clientWidth>0){MAP.W=ma.clientWidth;MAP.H=ma.clientHeight;}}
+function renderTiles(){
+  const[cx,cy]=worldPx(MAP.lat,MAP.lon,MAP.z);
+  const left=cx-MAP.W/2,top=cy-MAP.H/2;
+  RENDER={left,top};
+  const n=Math.pow(2,MAP.z),ext=MAP.layer==="seamlessphoto"?"jpg":"png";
+  let html="";
+  for(let tx=Math.floor(left/256);tx<=Math.floor((left+MAP.W)/256);tx++)
+    for(let ty=Math.floor(top/256);ty<=Math.floor((top+MAP.H)/256);ty++){
+      if(ty<0||ty>=n)continue;
+      const wx=((tx%n)+n)%n;
+      html+=`<img src="https://cyberjapandata.gsi.go.jp/xyz/${MAP.layer}/${MAP.z}/${wx}/${ty}.${ext}" style="left:${(tx*256-left).toFixed(1)}px;top:${(ty*256-top).toFixed(1)}px" draggable="false">`;
+    }
+  tilesEl.innerHTML=html;
+  tilesEl.style.transform="translate(0px,0px)";
+}
+function positionTiles(){
+  const[cx,cy]=worldPx(MAP.lat,MAP.lon,MAP.z);
+  tilesEl.style.transform=`translate(${(RENDER.left-(cx-MAP.W/2)).toFixed(1)}px,${(RENDER.top-(cy-MAP.H/2)).toFixed(1)}px)`;
+}
+
+/* ---- オーバーレイ ---- */
+function drawOverlay(){
+  const dt=seaDate(S.sea),m=mpp();
+  const org=MO.house||{lat:MAP.lat,lon:MAP.lon};
+  const p=sunPos(dt,S.t,org.lat,org.lon);
+  let s="";
+  if(p.alt>MIN_ALT){
+    const L=1/Math.tan(p.alt*RAD);
+    const dx=-Math.sin(p.az*RAD)/m,dy=Math.cos(p.az*RAD)/m;
+    MO.blds.forEach(b=>{
+      const[cx,cy]=scr(b.lat,b.lon),hp=(b.w/2)/m,sh=b.h*L;
+      const c=[[cx-hp,cy-hp],[cx+hp,cy-hp],[cx+hp,cy+hp],[cx-hp,cy+hp]];
+      const pts=hull(c.concat(c.map(q=>[q[0]+dx*sh,q[1]+dy*sh])));
+      s+=`<polygon points="${pts.map(q=>q[0].toFixed(1)+","+q[1].toFixed(1)).join(" ")}" fill="#0E1B33" fill-opacity=".5" stroke="#8FC0FF" stroke-width="1.6" stroke-opacity=".95"/>`;
+    });
+  }
+  MO.blds.forEach((b,i)=>{
+    const[cx,cy]=scr(b.lat,b.lon),hp=Math.max(7,(b.w/2)/m);
+    s+=`<rect x="${(cx-hp).toFixed(1)}" y="${(cy-hp).toFixed(1)}" width="${(hp*2).toFixed(1)}" height="${(hp*2).toFixed(1)}" fill="#C0392B" fill-opacity=".3" stroke="#C0392B" stroke-width="2"/>`;
+    const bx=cx-hp, by=cy-hp;
+    s+=`<circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="8.5" fill="#C0392B" stroke="#fff" stroke-width="1.5"/>`;
+    s+=`<text x="${bx.toFixed(1)}" y="${(by+4).toFixed(1)}" font-size="11" font-weight="bold" fill="#fff" text-anchor="middle">${i+1}</text>`;
+  });
+  if(MO.house){
+    const[hx,hy]=scr(MO.house.lat,MO.house.lon);
+    const ax=hx+Math.sin(S.winAz*RAD)*24,ay=hy-Math.cos(S.winAz*RAD)*24;
+    s+=`<line x1="${hx.toFixed(1)}" y1="${hy.toFixed(1)}" x2="${ax.toFixed(1)}" y2="${ay.toFixed(1)}" stroke="#F5A623" stroke-width="5" stroke-linecap="round"/>`;
+    s+=`<circle cx="${ax.toFixed(1)}" cy="${ay.toFixed(1)}" r="5" fill="#F5A623" stroke="#fff" stroke-width="1.5"/>`;
+    const lit=(MO.house&&p.alt>MIN_ALT&&Math.abs(angDiff(p.az,S.winAz))<90&&!MO.blds.some(b=>{
+      const[e,n]=offM(MO.house,b),H=Math.max(0,b.h-S.sill);
+      return H>0&&segHitsRect(Math.sin(p.az*RAD),Math.cos(p.az*RAD),H/Math.tan(p.alt*RAD),e,n,b.w/2);}));
+    s+=`<circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="13" fill="${lit?"#F5A623":"#7B8FA8"}" stroke="#fff" stroke-width="3"/>`;
+    s+=`<text x="${hx.toFixed(1)}" y="${(hy+5).toFixed(1)}" font-size="13" text-anchor="middle">🏠</text>`;
+    if(p.alt>MIN_ALT){
+      s+=`<text x="${hx.toFixed(1)}" y="${(hy-20).toFixed(1)}" font-size="11" font-weight="bold" fill="${lit?"#9A6A00":"#3D4F63"}" text-anchor="middle" stroke="#fff" stroke-width="3" paint-order="stroke">${lit?"日が当たっている":"影の中"}</text>`;
+    }
+  }
+  // 縮尺
+  const bar=Math.round(20/m);
+  s+=`<line x1="12" y1="26" x2="${12+bar}" y2="26" stroke="#fff" stroke-width="3" stroke-linecap="round"/>`;
+  s+=`<line x1="12" y1="22" x2="12" y2="30" stroke="#fff" stroke-width="2"/>`;
+  s+=`<line x1="${12+bar}" y1="22" x2="${12+bar}" y2="30" stroke="#fff" stroke-width="2"/>`;
+  s+=`<text x="${12+bar+6}" y="30" font-size="10.5" font-weight="bold" fill="#fff" stroke="#1B2A41" stroke-width="2.5" paint-order="stroke">20m</text>`;
+  document.getElementById("ov").innerHTML=s;
+}
+
+/* ---- 更新 ---- */
+function renderBldList(){
+  const el=document.getElementById("bldlist");
+  if(!MO.blds.length){el.innerHTML="";return;}
+  el.innerHTML=MO.blds.map((b,i)=>{
+    const d=MO.house?Math.max(0,distM(MO.house,b)-b.w/2):null;
+    const az=MO.house?bearing(MO.house,b):0;
+    return `<div class="bldrow"><div class="no">${i+1}</div>
+      <select class="bh" data-i="${i}">${HOPT.map(o=>`<option value="${o[1]}"${o[1]==b.h?" selected":""}>${o[0]}</option>`).join("")}</select>
+      <select class="bw" data-i="${i}">${WOPT.map(o=>`<option value="${o[1]}"${o[1]==b.w?" selected":""}>${o[0]}</option>`).join("")}</select>
+      <div class="dst">${d!=null?dir8(az)+"<br>"+d.toFixed(1)+"m":""}</div>
+      <button class="del" data-i="${i}">×</button></div>`;
+  }).join("");
+}
+function updateHint(){
+  const el=document.getElementById("hint");
+  if(MO.mode==="house")el.innerHTML="🏠 まず<b>調べたい家（窓）の位置を航空写真の上でタップ</b>してください。置いたら自動で建物モードに切り替わります。";
+  else if(!MO.blds.length)el.innerHTML="🏢 <b>南側の建物からタップ</b>していってください。置いた建物をもう一度タップすると消えます。";
+  else el.innerHTML=`🏢 建物を <b>${MO.blds.length}件</b> 配置中。階数は下のリストで変えられます。もう一度タップで削除。`;
+}
+function updateMap(){
+  const dt=seaDate(S.sea),r=calcDayMap(dt);
+  const rk=rank(r.sunMin);
+  document.getElementById("mvCap").textContent=`${dt.label}／${DIRNAME[S.winAz]}向き・${S.sill===1?"1階":"2階"}の窓${MO.blds.length?"／建物"+MO.blds.length+"件":"／遮るものなし"}`;
+  document.getElementById("mvRank").textContent=MO.house?rk.t:"家の位置をタップしてください";
+  document.getElementById("mvRank").style.color=MO.house?rk.c:"#8FA3BC";
+  document.getElementById("mvHours").innerHTML=r.sunMin>0
+    ?`${Math.floor(r.sunMin/60)}<small>時間</small>${String(r.sunMin%60).padStart(2,"0")}<small>分</small>`:`0<small>時間</small>`;
+  const sp=document.getElementById("mvSpan");
+  sp.textContent=segText(r.segs);sp.style.fontSize=r.segs.length>1?"12.5px":"15px";
+  document.getElementById("mvReg").textContent=r.regMin>0?fmtH(r.regMin):"0分";
+  document.getElementById("mvNote").innerHTML=MO.blds.length
+    ?noteFor(r,dt):"まだ建物を置いていないので「周りに何もない」状態の数字です。<b>航空写真を見ながら、南側の家をタップ</b>してください。";
+  // 主犯
+  const cel=document.getElementById("mculprit");
+  const top=r.blocks.map((v,i)=>[v,i]).sort((a,b)=>b[0]-a[0])[0];
+  if(top&&top[0]>=20&&MO.house){
+    const b=MO.blds[top[1]];
+    cel.innerHTML=`<div class="culprit">日当たりを奪っている主犯は <b>${top[1]+1}番</b>（${dir8(bearing(MO.house,b))}に${Math.max(0,distM(MO.house,b)-b.w/2).toFixed(1)}m・${hName(b.h)}）。1日のうち <b>${fmtH(top[0])}</b> を遮っています。${top[0]>=180?"この1棟を外せるかどうかで、この家の評価は変わります。":""}</div>`;
+  }else cel.innerHTML="";
+  drawTimeline(r,"mtimeline");
+  renderBldList();drawOverlay();
+  document.getElementById("mtslider").value=S.t;
+  document.getElementById("mtV").innerHTML=fmtT(S.t)+'<span id="mtSun"></span>';
+  const org=MO.house||{lat:MAP.lat,lon:MAP.lon},p=sunPos(dt,S.t,org.lat,org.lon);
+  document.getElementById("mtSun").textContent=`　高度 ${p.alt>0?p.alt.toFixed(0)+"°":"—"}／方位 ${p.az.toFixed(0)}°`;
+}
+function syncPicks(){
+  document.querySelectorAll(".p-dir,.p-mdir").forEach(b=>b.classList.toggle("sel",+b.dataset.az===S.winAz));
+  document.querySelectorAll(".p-floor,.p-mfloor").forEach(b=>b.classList.toggle("sel",+b.dataset.h===S.sill));
+  document.querySelectorAll(".p-sea,.p-msea").forEach(b=>b.classList.toggle("sel",b.dataset.s===S.sea));
+}
+function bothUpdate(){syncPicks();update();updateMap();}
+
+/* ---- 操作 ---- */
+let drag=null;
+ma.addEventListener("pointerdown",e=>{ma.setPointerCapture(e.pointerId);drag={x:e.clientX,y:e.clientY,moved:0};});
+ma.addEventListener("pointermove",e=>{
+  if(!drag)return;
+  const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
+  drag.moved+=Math.abs(dx)+Math.abs(dy);drag.x=e.clientX;drag.y=e.clientY;
+  const[cx,cy]=worldPx(MAP.lat,MAP.lon,MAP.z);
+  [MAP.lat,MAP.lon]=pxToLatLon(cx-dx,cy-dy,MAP.z);
+  positionTiles();drawOverlay();
+});
+ma.addEventListener("pointerup",e=>{
+  if(!drag)return;
+  const moved=drag.moved;drag=null;
+  if(moved<7)mapTap(e); else {renderTiles();drawOverlay();}
+});
+ma.addEventListener("pointercancel",()=>{drag=null;});
+function mapTap(e){
+  // タイル要素の矩形はドラッグ中の transform も含むので、そこから世界座標を復元する
+  const tr=tilesEl.getBoundingClientRect();
+  const wx=RENDER.left+(e.clientX-tr.left), wy=RENDER.top+(e.clientY-tr.top);
+  const[la,lo]=pxToLatLon(wx,wy,MAP.z);
+  const[ccx,ccy]=worldPx(MAP.lat,MAP.lon,MAP.z);
+  const x=wx-(ccx-MAP.W/2), y=wy-(ccy-MAP.H/2);   // 表示フレーム座標（当たり判定用）
+  if(MO.mode==="house"){MO.house={lat:la,lon:lo};setMode("bld");}
+  else{
+    const m=mpp();let hit=-1;
+    MO.blds.forEach((b,i)=>{const[bx,by]=scr(b.lat,b.lon),hp=Math.max(9,(b.w/2)/m*0.9);
+      if(Math.abs(x-bx)<=hp&&Math.abs(y-by)<=hp)hit=i;});
+    if(hit>=0)MO.blds.splice(hit,1);else MO.blds.push({lat:la,lon:lo,w:9,h:6.5});
+  }
+  updateHint();updateMap();
+}
+function setMode(m){
+  MO.mode=m;
+  document.getElementById("modeHouse").classList.toggle("on",m==="house");
+  document.getElementById("modeBld").classList.toggle("on",m==="bld");
+  updateHint();
+}
+document.getElementById("modeHouse").addEventListener("click",()=>setMode("house"));
+document.getElementById("modeBld").addEventListener("click",()=>setMode("bld"));
+document.getElementById("clearBld").addEventListener("click",()=>{MO.blds=[];updateHint();updateMap();});
+document.getElementById("zin").addEventListener("click",()=>{if(MAP.z<18){MAP.z++;renderTiles();drawOverlay();}});
+document.getElementById("zout").addEventListener("click",()=>{if(MAP.z>15){MAP.z--;renderTiles();drawOverlay();}});
+document.getElementById("layerBtn").addEventListener("click",e=>{
+  MAP.layer=MAP.layer==="seamlessphoto"?"pale":"seamlessphoto";
+  e.target.textContent=MAP.layer==="seamlessphoto"?"地図に切替":"写真に切替";
+  document.querySelector(".attr").textContent=MAP.layer==="seamlessphoto"?"地理院タイル（航空写真）":"地理院タイル（淡色地図）";
+  renderTiles();});
+document.getElementById("bldlist").addEventListener("change",e=>{
+  const i=+e.target.dataset.i;
+  if(e.target.classList.contains("bh"))MO.blds[i].h=+e.target.value;
+  if(e.target.classList.contains("bw"))MO.blds[i].w=+e.target.value;
+  updateMap();});
+document.getElementById("bldlist").addEventListener("click",e=>{
+  if(!e.target.classList.contains("del"))return;
+  MO.blds.splice(+e.target.dataset.i,1);updateHint();updateMap();});
+document.querySelectorAll(".p-mdir").forEach(b=>b.addEventListener("click",()=>{S.winAz=+b.dataset.az;bothUpdate();}));
+document.querySelectorAll(".p-mfloor").forEach(b=>b.addEventListener("click",()=>{S.sill=+b.dataset.h;bothUpdate();}));
+document.querySelectorAll(".p-msea").forEach(b=>b.addEventListener("click",()=>{S.sea=b.dataset.s;bothUpdate();}));
+document.querySelectorAll(".p-dir,.p-floor,.p-sea").forEach(b=>b.addEventListener("click",()=>{syncPicks();updateMap();}));
+document.getElementById("mtslider").addEventListener("input",e=>{
+  S.t=+e.target.value;document.getElementById("tslider").value=S.t;
+  document.getElementById("mtV").innerHTML=fmtT(S.t)+'<span id="mtSun"></span>';
+  const dt=seaDate(S.sea),org=MO.house||{lat:MAP.lat,lon:MAP.lon},p=sunPos(dt,S.t,org.lat,org.lon);
+  document.getElementById("mtSun").textContent=`　高度 ${p.alt>0?p.alt.toFixed(0)+"°":"—"}／方位 ${p.az.toFixed(0)}°`;
+  drawOverlay();drawTimeline(calcDayMap(dt),"mtimeline");});
+document.getElementById("tslider").addEventListener("input",()=>{document.getElementById("mtslider").value=S.t;});
+// 表示・リサイズ・タブ切替のすべてを ResizeObserver で拾う（測定タイミング依存を排除）
+if(window.ResizeObserver){
+  new ResizeObserver(()=>{
+    if(ma.clientWidth>0&&(Math.abs(ma.clientWidth-MAP.W)>0.5||Math.abs(ma.clientHeight-MAP.H)>0.5)){
+      mapResize();renderTiles();drawOverlay();
+    }}).observe(ma);
+}else window.addEventListener("resize",()=>{mapResize();renderTiles();drawOverlay();});
+
+function syncMapToPlace(){
+  MAP.lat=S.lat;MAP.lon=S.lon;MO.house={lat:S.lat,lon:S.lon};MO.blds=[];
+  mapResize();renderTiles();setMode("house");updateMap();
+}
+async function msearch(){
+  const q=document.getElementById("maddr").value.trim();if(!q)return;
+  const el=document.getElementById("hint");el.innerHTML="検索中…";
+  try{
+    const res=await fetch("https://msearch.gsi.go.jp/address-search/AddressSearch?q="+encodeURIComponent(q));
+    const j=await res.json();
+    if(!j.length){el.innerHTML="見つかりませんでした。<b>市区町村名まで</b>で試してください。";return;}
+    S.lon=j[0].geometry.coordinates[0];S.lat=j[0].geometry.coordinates[1];S.name=j[0].properties.title;
+    document.getElementById("addr").value=q;showPlace();update();syncMapToPlace();
+  }catch(err){el.innerHTML="通信できませんでした。もう一度お試しください。";}
+}
+document.getElementById("mgo").addEventListener("click",msearch);
+document.getElementById("maddr").addEventListener("keydown",e=>{if(e.key==="Enter")msearch();});
+
+function initMap(){
+  mapResize();MAP.lat=S.lat;MAP.lon=S.lon;MO.house={lat:S.lat,lon:S.lon};
+  renderTiles();setMode("house");updateMap();
+}
+
+showPlace();update();initMap();
 </script>
 </body>
 </html>
