@@ -4,7 +4,8 @@
 航空写真の上で家と周りの建物をタップすると、冬至にその窓へ何時間日が入るかを計算します。
 
 - 公開URL: https://satokott4274-blip.github.io/bororich-hiatari/
-- 単一HTML・依存ライブラリなし
+- 単一HTML・依存ライブラリなし（Google Fontsのみ外部）
+- **デザインは物件診断シミュレーター（bororich-shindan-app）と共通**。配色トークン・ロゴ・街並みシルエット・stepCard・判定スタンプ・ctaCard を移植しているので、片方のデザインを変えたらもう片方も合わせること
 
 ## なぜ「建物を人がタップする」方式なのか
 
