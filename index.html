@@ -1000,7 +1000,7 @@ document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click",()
   document.querySelectorAll("section").forEach(x=>x.classList.remove("on"));
   b.classList.add("on");document.getElementById(b.dataset.t).classList.add("on");
   const nv=document.querySelector("nav");
-  if(window.scrollY>nv.offsetTop)window.scrollTo({top:nv.offsetTop,behavior:"smooth"});
+  if(window.scrollY>nv.offsetTop)smoothTo(nv.offsetTop,380);
 }));
 pickGroup(".p-dir",b=>S.winAz=+b.dataset.az);
 pickGroup(".p-floor",b=>S.sill=+b.dataset.h);
@@ -1447,44 +1447,68 @@ document.getElementById("maddr").addEventListener("keydown",e=>{if(e.key==="Ente
 /* ================= 使い方デモ ================= */
 // 実在の住宅密集地（足立区西新井本町あたり）を舞台にする。家が5〜8m間隔で建ち並ぶので
 // 置いた四角がほぼ屋根に乗り、「実際にやったらこうなる」がそのまま伝わる。
-const DEMOSITE={lat:35.77760,lon:139.78860,label:"東京都足立区西新井本町"};
+const DEMOSITE={lat:35.628920,lon:139.641734,label:"東京都世田谷区桜新町"};
+// 家・南どなり・南西どなりは OpenStreetMap の実在の建物の中心座標から採った座標なので、
+// 航空写真の屋根の上にぴったり乗る。
+const DEMO_S=[0.6,-13.6,6,6.5];    // 南どなり（中心13.6m先・幅6m・まず2階建てで置く）
+const DEMO_SW=[-8.3,-10.2,9,6.5];  // 南西どなり
 let demo=null;
 
 function m2ll(o,de,dn){
   return {lat:o.lat+dn/110574, lon:o.lon+de/(111320*Math.cos(o.lat*RAD))};
 }
+/* scroll-behavior:smooth が効かない環境があるので、自前で滑らかに動かす */
+let scrollTimer=null;
+function smoothTo(target,dur){
+  clearInterval(scrollTimer);
+  const start=window.scrollY, d=Math.max(0,target)-start, t0=Date.now();
+  if(Math.abs(d)<2)return;
+  scrollTimer=setInterval(()=>{
+    const p=Math.min(1,(Date.now()-t0)/(dur||450));
+    const e=p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;
+    window.scrollTo(0,start+d*e);
+    if(p>=1)clearInterval(scrollTimer);
+  },16);
+}
+function scrollToEl(el,mode){
+  const r=el.getBoundingClientRect();
+  const top=r.top+window.scrollY;
+  smoothTo(mode==="center"?top+r.height/2-innerHeight/2:top-92);
+}
+function focusMap(){scrollToEl(document.getElementById("maparea"),"start");}
 function demoHouse(){
   MO.house={lat:MAP.lat,lon:MAP.lon};
   if(MAP.z<19)MAP.z=19;
   renderTiles();setMode("bld");updateMap();
 }
 function demoBld(de,dn,w,h){
+  if(!MO.house)return;
   const q=m2ll(MO.house,de,dn);
   MO.blds.push({lat:q.lat,lon:q.lon,w:w,h:h});
   updateHint();updateMap();
 }
 const DEMO_STEPS=[
  {c:'調べたい物件の<b>住所を入れて検索</b>します。',ms:2200,
-  f:()=>{document.getElementById("maddr").value=DEMOSITE.label;}},
- {c:'航空写真が出ました。ここは<b>実際の住宅地</b>です。',ms:2600,
+  f:()=>{focusMap();document.getElementById("maddr").value=DEMOSITE.label;}},
+ {c:'航空写真が出ました。ここは<b>実在の住宅地</b>です。',ms:2600,
   f:()=>{S.lat=DEMOSITE.lat;S.lon=DEMOSITE.lon;S.name=DEMOSITE.label;
-         showPlace();update();syncMapToPlace();}},
- {c:'<b>①</b> 調べたい家をタップ。自動で寄ります。',ms:3200,f:()=>demoHouse()},
- {c:'<b>②</b> 南どなりの家をタップして置きます。',ms:2800,f:()=>demoBld(0,-9,9,6.5)},
- {c:'<b>③</b> 階数を選びます。この家は3階建てでした。',ms:3000,
-  f:()=>{MO.blds[0].h=9.5;updateMap();}},
- {c:'<b>④</b> 時刻を動かすと、影がこう動きます。<b>真昼だけ影に沈む</b>のが見えます。',ms:19500,
-  f:()=>startPlay(18000)},
- {c:()=>`<b>⑤</b> 冬至に日が入るのは <b>${document.getElementById("mvHours").textContent}</b> だけ。判定は「${document.getElementById("mvRank").textContent}」。`,ms:5000,
-  f:()=>document.getElementById("mverdict").scrollIntoView({behavior:"smooth",block:"center"})},
- {c:'<b>⑥</b> もし南東にもう1棟あったら？ 置いてみます。',ms:4200,
-  f:()=>{demo.before=document.getElementById("mvHours").textContent;
-         document.getElementById("maparea").scrollIntoView({behavior:"smooth",block:"center"});
-         setTimeout(()=>{if(demo)demoBld(9,-7,9,4);},1400);}},
- {c:()=>`1棟増えただけで <b>${demo.before}</b> → <b>${document.getElementById("mvHours").textContent}</b>。<b>この1棟を外せるかどうか</b>で、物件の評価は変わります。`,ms:5800,
-  f:()=>document.getElementById("mverdict").scrollIntoView({behavior:"smooth",block:"center"})},
+         showPlace();update();syncMapToPlace();focusMap();}},
+ {c:'<b>①</b> 調べたい家をタップ。自動で寄ります。',ms:3200,f:()=>{focusMap();demoHouse();}},
+ {c:'<b>②</b> 南どなりの家をタップして置きます。',ms:3400,
+  f:()=>{focusMap();demoBld(DEMO_S[0],DEMO_S[1],DEMO_S[2],DEMO_S[3]);}},
+ {c:()=>`いまは <b>${document.getElementById("mvHours").textContent}</b>。でもストリートビューで見たら、この家は<b>3階建て</b>でした。`,ms:3800,
+  f:()=>{focusMap();demo.h1=document.getElementById("mvHours").textContent;
+         MO.blds[0].h=9.5;updateMap();}},
+ {c:()=>`<b>③</b> 階数を直すと <b>${demo.h1}</b> → <b>${document.getElementById("mvHours").textContent}</b>。<b>真昼だけ影に沈み</b>ます。動かして見てください。`,ms:19500,
+  f:()=>{focusMap();demo.h2=document.getElementById("mvHours").textContent;startPlay(18000);}},
+ {c:()=>`<b>④</b> 冬至に日が入るのは <b>${document.getElementById("mvHours").textContent}</b>。判定は「${document.getElementById("mvRank").textContent}」。`,ms:5000,
+  f:()=>scrollToEl(document.getElementById("mverdict"),"center")},
+ {c:'<b>⑤</b> 南西にも家があります。これも置いてみます。',ms:4200,
+  f:()=>{focusMap();setTimeout(()=>{if(demo)demoBld(DEMO_SW[0],DEMO_SW[1],DEMO_SW[2],DEMO_SW[3]);},1400);}},
+ {c:()=>`<b>${demo.h1}</b> → <b>${demo.h2}</b> → <b>${document.getElementById("mvHours").textContent}</b>。<b>周りの1棟ずつで、家の評価は変わります。</b>`,ms:6000,
+  f:()=>scrollToEl(document.getElementById("mverdict"),"center")},
  {c:'デモはここまで。<b>自分の物件の住所</b>を入れて、同じことができます。',ms:5500,
-  f:()=>document.querySelector("#t0 .stepCard").scrollIntoView({behavior:"smooth",block:"start"})},
+  f:()=>scrollToEl(document.querySelector("#t0 .stepCard"),"start")},
 ];
 function demoStop(){
   if(!demo)return;
@@ -1509,12 +1533,12 @@ document.getElementById("demoBtn").addEventListener("click",()=>{
   document.querySelector('nav button[data-t="t0"]').click();
   MO.blds=[];MO.house=null;MAP.z=18;S.t=720;S.sea="w";S.winAz=180;S.sill=1;
   syncPicks();
-  demo={t:null,before:""};
+  demo={t:null,h1:"",h2:""};
   document.body.classList.add("demoing");
   document.getElementById("demoCap").classList.add("show");
   const b=document.getElementById("demoBtn");
   b.textContent="■ デモを止める";b.classList.add("on");
-  document.getElementById("maparea").scrollIntoView({behavior:"smooth",block:"center"});
+  focusMap();
   demo.t=setTimeout(()=>demoRun(0),700);
 });
 document.getElementById("demoSkip").addEventListener("click",demoStop);
