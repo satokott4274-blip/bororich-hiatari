@@ -206,7 +206,7 @@ tr.me td{background:var(--gold-pale)}
   background:var(--blue-light);border:2px solid #BDDCEF;touch-action:none;cursor:crosshair;
   user-select:none;box-shadow:0 4px 16px rgba(34,53,78,.1)}
 .maparea #tiles{position:absolute;inset:0;will-change:transform}
-.maparea #tiles img{position:absolute;width:256px;height:256px;pointer-events:none;display:block}
+.maparea #tiles img{position:absolute;pointer-events:none;display:block}
 .maparea svg.ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .mapbar{display:flex;gap:6px;margin-top:9px}
 .mapbar button{flex:1;font-family:inherit;font-size:12.5px;font-weight:900;
@@ -257,6 +257,32 @@ tr.me td{background:var(--gold-pale)}
 .ctaKeyword .kw{display:inline-block;background:var(--navy);color:var(--gold);
   border-radius:6px;padding:1px 10px;margin:0 3px}
 .ctaSub{margin-top:11px;font-size:11px;color:#9AA3AD;line-height:1.7}
+
+
+/* ===== 時刻スクラブ（shademap 風） ===== */
+.scrubCard{background:var(--navy);border-radius:16px;padding:14px 14px 12px;margin-top:14px;
+  box-shadow:0 6px 20px rgba(31,51,80,.22)}
+.scrubTop{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.playBtn{flex:none;font-family:inherit;font-size:12.5px;font-weight:900;color:var(--navy);
+  background:var(--gold);border:none;border-radius:999px;padding:8px 14px;cursor:pointer;
+  box-shadow:0 3px 0 #B57D2E;transition:transform .1s,box-shadow .1s}
+.playBtn:active{transform:translateY(3px);box-shadow:0 0 0 #B57D2E}
+.playBtn.on{background:#fff;box-shadow:0 3px 0 #B8C2CC}
+.sunread{flex:1;min-width:0;text-align:right;color:#fff;line-height:1.35}
+.sunread b{display:block;font-family:"M PLUS Rounded 1c",sans-serif;font-size:23px;font-weight:900}
+.sunread span{display:block;font-size:10.5px;opacity:.8;font-weight:700}
+.slider.band{height:16px;border-radius:8px;margin:0;border:2px solid rgba(255,255,255,.35)}
+.slider.band::-webkit-slider-thumb{width:26px;height:26px;border:3px solid var(--navy);
+  background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.45)}
+.slider.band::-moz-range-thumb{width:26px;height:26px;border:3px solid var(--navy);
+  background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.45)}
+.ticks{position:relative;height:26px;margin-top:1px}
+.ticks .tk{position:absolute;top:11px;transform:translateX(-50%);font-size:9.5px;font-weight:700;
+  color:rgba(255,255,255,.65);white-space:nowrap}
+.ticks .mk{position:absolute;top:-2px;transform:translateX(-50%);font-size:9px;color:var(--gold)}
+.riseset{margin-left:auto;color:var(--gold);font-weight:900}
+.scrubCard .legend{color:rgba(255,255,255,.75);margin-top:8px;gap:10px;font-size:10.5px}
+.scrubCard .legend i{border:1px solid rgba(255,255,255,.35)}
 
 /* ===== footer ===== */
 .footer{margin-top:26px;text-align:center;font-size:11.5px;color:#9AA3AD;line-height:1.8}
@@ -368,7 +394,7 @@ tr.me td{background:var(--gold-pale)}
     <button class="pick p-mfloor" data-h="4">2階の窓</button>
   </div>
 
-  <div class="q-label">いつの日当たりを見るか</div>
+  <div class="q-label">いつの日当たりを見るか <span>冬至がいちばん厳しい</span></div>
   <div class="grid four" id="mseaGrid">
     <button class="pick p-msea sel" data-s="w">冬至<small>12/21</small></button>
     <button class="pick p-msea" data-s="e">春秋分<small>3/21</small></button>
@@ -376,10 +402,21 @@ tr.me td{background:var(--gold-pale)}
     <button class="pick p-msea" data-s="t">今日</button>
   </div>
 
-  <div class="q-label">時刻 <span>影が動きます</span></div>
-  <input class="slider" id="mtslider" type="range" min="0" max="1439" step="5" value="720">
-  <div class="sv" id="mtV">12:00<span id="mtSun"></span></div>
-</div>
+  <div class="scrubCard">
+    <div class="scrubTop">
+      <button id="playBtn" class="playBtn">▶ 1日を再生</button>
+      <div class="sunread"><b id="mtV">12:00</b><span id="mtSun"></span></div>
+    </div>
+    <input class="slider band" id="mtslider" type="range" min="0" max="1439" step="1" value="720">
+    <div class="ticks" id="mticks"></div>
+    <div class="legend">
+      <span><i style="background:#E7B065"></i>日が入る</span>
+      <span><i style="background:#8795A8"></i>影</span>
+      <span><i style="background:#DCE3EA"></i>窓の裏</span>
+      <span><i style="background:#C9D2DC"></i>夜・低い</span>
+      <span id="mrise" class="riseset"></span>
+    </div>
+  </div>
 
   <div class="verdict" id="mverdict">
     <div class="cap" id="mvCap"></div>
@@ -394,17 +431,7 @@ tr.me td{background:var(--gold-pale)}
 
   <div id="mculprit"></div>
 
-  <div class="figbox">
-    <div class="figcap">1日の日当たり（日の出→日の入り）</div>
-    <svg id="mtimeline" viewBox="0 0 400 92"></svg>
-    <div class="legend">
-      <span><i style="background:var(--sun)"></i>日が入る</span>
-      <span><i style="background:var(--shade)"></i>影・朝夕の低すぎる日</span>
-      <span><i style="background:#DDE3EA"></i>太陽が窓の裏側</span>
-    </div>
-  </div>
-
-  <div class="warn" style="background:var(--light);border-left-color:var(--gray)">
+  <div class="warn" style="background:#F7F9FA;border-left-color:#B8C2CC">
     <b>使い方のコツ。</b>まず家の位置を合わせ、次に<b>南側の建物から順に</b>タップしてください。影を作るのはほぼ南側の建物です。空地や駐車場も「もし建ったら」で置いてみると、将来のリスクが見えます。
   </div>
 
@@ -885,7 +912,7 @@ function update(){
     ?`${Math.floor(r.sunMin/60)}<small>時間</small>${String(r.sunMin%60).padStart(2,"0")}<small>分</small>`
     :`0<small>時間</small>`;
   document.getElementById("vSpan").textContent=segText(r.segs);
-  document.getElementById("vSpan").style.fontSize=r.segs.length>1?"12.5px":"15px";
+  document.getElementById("vSpan").style.fontSize=r.segs.length>1?"11px":"13.5px";
   document.getElementById("vReg").textContent=r.regMin>0?fmtH(r.regMin):"0分";
   document.getElementById("vNote").innerHTML=noteFor(r,dt);
   drawTimeline(r);drawSection(dt);drawCompass(dt,r);
@@ -1074,17 +1101,20 @@ function calcDayMap(dt){
 const ma=document.getElementById("maparea"),tilesEl=document.getElementById("tiles");
 let RENDER={left:0,top:0};
 function mapResize(){if(ma.clientWidth>0){MAP.W=ma.clientWidth;MAP.H=ma.clientHeight;}}
+const TILEMAX=18;   // 地理院の航空写真はz18が上限。それ以上は同じタイルを拡大して使う
 function renderTiles(){
   const[cx,cy]=worldPx(MAP.lat,MAP.lon,MAP.z);
   const left=cx-MAP.W/2,top=cy-MAP.H/2;
   RENDER={left,top};
-  const n=Math.pow(2,MAP.z),ext=MAP.layer==="seamlessphoto"?"jpg":"png";
+  const tz=Math.min(TILEMAX,MAP.z);
+  const ts=256*Math.pow(2,MAP.z-tz);                 // 画面上でのタイル1枚の大きさ
+  const n=Math.pow(2,tz),ext=MAP.layer==="seamlessphoto"?"jpg":"png";
   let html="";
-  for(let tx=Math.floor(left/256);tx<=Math.floor((left+MAP.W)/256);tx++)
-    for(let ty=Math.floor(top/256);ty<=Math.floor((top+MAP.H)/256);ty++){
+  for(let tx=Math.floor(left/ts);tx<=Math.floor((left+MAP.W)/ts);tx++)
+    for(let ty=Math.floor(top/ts);ty<=Math.floor((top+MAP.H)/ts);ty++){
       if(ty<0||ty>=n)continue;
       const wx=((tx%n)+n)%n;
-      html+=`<img src="https://cyberjapandata.gsi.go.jp/xyz/${MAP.layer}/${MAP.z}/${wx}/${ty}.${ext}" style="left:${(tx*256-left).toFixed(1)}px;top:${(ty*256-top).toFixed(1)}px" draggable="false">`;
+      html+=`<img src="https://cyberjapandata.gsi.go.jp/xyz/${MAP.layer}/${tz}/${wx}/${ty}.${ext}" style="left:${(tx*ts-left).toFixed(1)}px;top:${(ty*ts-top).toFixed(1)}px;width:${ts}px;height:${ts}px" draggable="false">`;
     }
   tilesEl.innerHTML=html;
   tilesEl.style.transform="translate(0px,0px)";
@@ -1099,45 +1129,111 @@ function drawOverlay(){
   const dt=seaDate(S.sea),m=mpp();
   const org=MO.house||{lat:MAP.lat,lon:MAP.lon};
   const p=sunPos(dt,S.t,org.lat,org.lon);
+  const up=p.alt>MIN_ALT;
+  const W=MAP.W,H=MAP.H;
   let s="";
-  if(p.alt>MIN_ALT){
+
+  if(!up){
+    // 日が回っていない時間帯は一面を暗く沈める（shademap と同じ見え方）
+    s+=`<rect x="0" y="0" width="${W}" height="${H}" fill="#2C3A4E" opacity=".52"/>`;
+  }else{
+    // 影は「1枚の面」。重なっても濃くならないよう g にまとめて不透明度をかける
     const L=1/Math.tan(p.alt*RAD);
-    const dx=-Math.sin(p.az*RAD)/m,dy=Math.cos(p.az*RAD)/m;
+    const dx=-Math.sin(p.az*RAD)/m, dy=Math.cos(p.az*RAD)/m;
+    let sh="";
     MO.blds.forEach(b=>{
-      const[cx,cy]=scr(b.lat,b.lon),hp=(b.w/2)/m,sh=b.h*L;
+      const[cx,cy]=scr(b.lat,b.lon),hp=Math.max(6,(b.w/2)/m),shl=b.h*L;
       const c=[[cx-hp,cy-hp],[cx+hp,cy-hp],[cx+hp,cy+hp],[cx-hp,cy+hp]];
-      const pts=hull(c.concat(c.map(q=>[q[0]+dx*sh,q[1]+dy*sh])));
-      s+=`<polygon points="${pts.map(q=>q[0].toFixed(1)+","+q[1].toFixed(1)).join(" ")}" fill="#12213A" fill-opacity=".5" stroke="#8FC0FF" stroke-width="1.6" stroke-opacity=".95"/>`;
+      const pts=hull(c.concat(c.map(q=>[q[0]+dx*shl,q[1]+dy*shl])));
+      sh+=`<polygon points="${pts.map(q=>q[0].toFixed(1)+","+q[1].toFixed(1)).join(" ")}" fill="#2C3A4E"/>`;
     });
+    if(sh)s+=`<g opacity=".52">${sh}</g>`;
   }
+
+  // 建物：塗りつぶさず、輪郭と番号だけ（影を主役にする）
   MO.blds.forEach((b,i)=>{
     const[cx,cy]=scr(b.lat,b.lon),hp=Math.max(7,(b.w/2)/m);
-    s+=`<rect x="${(cx-hp).toFixed(1)}" y="${(cy-hp).toFixed(1)}" width="${(hp*2).toFixed(1)}" height="${(hp*2).toFixed(1)}" fill="#C95B5B" fill-opacity=".3" stroke="#C95B5B" stroke-width="2"/>`;
-    const bx=cx-hp, by=cy-hp;
-    s+=`<circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="8.5" fill="#C95B5B" stroke="#fff" stroke-width="1.5"/>`;
-    s+=`<text x="${bx.toFixed(1)}" y="${(by+4).toFixed(1)}" font-size="11" font-weight="bold" fill="#fff" text-anchor="middle">${i+1}</text>`;
+    s+=`<rect x="${(cx-hp).toFixed(1)}" y="${(cy-hp).toFixed(1)}" width="${(hp*2).toFixed(1)}" height="${(hp*2).toFixed(1)}" fill="#fff" fill-opacity=".14" stroke="#fff" stroke-width="2" stroke-opacity=".9" rx="2"/>`;
+    s+=`<circle cx="${(cx-hp).toFixed(1)}" cy="${(cy-hp).toFixed(1)}" r="8.5" fill="#1F3350" stroke="#fff" stroke-width="1.5"/>`;
+    s+=`<text x="${(cx-hp).toFixed(1)}" y="${(cy-hp+4).toFixed(1)}" font-size="11" font-weight="bold" fill="#fff" text-anchor="middle">${i+1}</text>`;
   });
+
   if(MO.house){
     const[hx,hy]=scr(MO.house.lat,MO.house.lon);
-    const ax=hx+Math.sin(S.winAz*RAD)*24,ay=hy-Math.cos(S.winAz*RAD)*24;
-    s+=`<line x1="${hx.toFixed(1)}" y1="${hy.toFixed(1)}" x2="${ax.toFixed(1)}" y2="${ay.toFixed(1)}" stroke="#E7B065" stroke-width="5" stroke-linecap="round"/>`;
-    s+=`<circle cx="${ax.toFixed(1)}" cy="${ay.toFixed(1)}" r="5" fill="#E7B065" stroke="#fff" stroke-width="1.5"/>`;
-    const lit=(MO.house&&p.alt>MIN_ALT&&Math.abs(angDiff(p.az,S.winAz))<90&&!MO.blds.some(b=>{
-      const[e,n]=offM(MO.house,b),H=Math.max(0,b.h-S.sill);
-      return H>0&&segHitsRect(Math.sin(p.az*RAD),Math.cos(p.az*RAD),H/Math.tan(p.alt*RAD),e,n,b.w/2);}));
-    s+=`<circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="13" fill="${lit?"#E7B065":"#8795A8"}" stroke="#fff" stroke-width="3"/>`;
-    s+=`<text x="${hx.toFixed(1)}" y="${(hy+5).toFixed(1)}" font-size="13" text-anchor="middle">🏠</text>`;
-    if(p.alt>MIN_ALT){
-      s+=`<text x="${hx.toFixed(1)}" y="${(hy-20).toFixed(1)}" font-size="11" font-weight="bold" fill="${lit?"#A9741F":"#4A5A70"}" text-anchor="middle" stroke="#fff" stroke-width="3" paint-order="stroke">${lit?"日が当たっている":"影の中"}</text>`;
+    const lit=up&&Math.abs(angDiff(p.az,S.winAz))<90&&!MO.blds.some(b=>{
+      const[e,n]=offM(MO.house,b),Hb=Math.max(0,b.h-S.sill);
+      return Hb>0&&segHitsRect(Math.sin(p.az*RAD),Math.cos(p.az*RAD),Hb/Math.tan(p.alt*RAD),e,n,b.w/2);});
+
+    // 太陽がどの方向にあるか：地図の縁に太陽を置き、家まで光線を引く
+    if(up){
+      const ux=Math.sin(p.az*RAD), uy=-Math.cos(p.az*RAD);
+      let t=1e9;
+      if(ux>1e-6)t=Math.min(t,(W-26-hx)/ux); if(ux<-1e-6)t=Math.min(t,(26-hx)/ux);
+      if(uy>1e-6)t=Math.min(t,(H-26-hy)/uy); if(uy<-1e-6)t=Math.min(t,(26-hy)/uy);
+      t=Math.max(34,Math.min(t,Math.max(W,H)));
+      let sx=hx+ux*t, sy=hy+uy*t;
+      // 下端のズーム／レイヤーボタンに重ならないよう内側へ寄せる
+      let g=0;
+      while(g++<60&&t>40&&((sx>W-60&&sy>H-100)||(sx<160&&sy>H-52))){t-=6;sx=hx+ux*t;sy=hy+uy*t;}
+      s+=`<line x1="${sx.toFixed(1)}" y1="${sy.toFixed(1)}" x2="${hx.toFixed(1)}" y2="${hy.toFixed(1)}" stroke="${lit?"#F5C06A":"#9AA7B8"}" stroke-width="${lit?3.5:2.5}" stroke-opacity="${lit?.95:.6}" stroke-dasharray="${lit?"0":"6 5"}" stroke-linecap="round"/>`;
+      for(let k=0;k<8;k++){const a=k*45*RAD;
+        s+=`<line x1="${(sx+Math.cos(a)*15).toFixed(1)}" y1="${(sy+Math.sin(a)*15).toFixed(1)}" x2="${(sx+Math.cos(a)*21).toFixed(1)}" y2="${(sy+Math.sin(a)*21).toFixed(1)}" stroke="#F5C06A" stroke-width="2.5" stroke-linecap="round" stroke-opacity=".9"/>`;}
+      s+=`<circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="13" fill="#F5C06A" stroke="#fff" stroke-width="2.5"/>`;
     }
+
+    // 窓の向き
+    const ax=hx+Math.sin(S.winAz*RAD)*24, ay=hy-Math.cos(S.winAz*RAD)*24;
+    s+=`<line x1="${hx.toFixed(1)}" y1="${hy.toFixed(1)}" x2="${ax.toFixed(1)}" y2="${ay.toFixed(1)}" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-opacity=".9"/>`;
+    s+=`<circle cx="${ax.toFixed(1)}" cy="${ay.toFixed(1)}" r="4.5" fill="#fff"/>`;
+    // 家
+    s+=`<circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="14" fill="${lit?"#E7B065":"#6E7C90"}" stroke="#fff" stroke-width="3.5"/>`;
+    s+=`<text x="${hx.toFixed(1)}" y="${(hy+5).toFixed(1)}" font-size="14" text-anchor="middle">🏠</text>`;
+    s+=`<text x="${hx.toFixed(1)}" y="${(hy-22).toFixed(1)}" font-size="12" font-weight="bold" fill="${lit?"#A9741F":"#3A4657"}" text-anchor="middle" stroke="#fff" stroke-width="3.5" paint-order="stroke">${up?(lit?"日が当たっている":"影の中"):"日が回らない時間"}</text>`;
   }
-  // 縮尺
+
+  // 縮尺と方位
   const bar=Math.round(20/m);
   s+=`<line x1="12" y1="26" x2="${12+bar}" y2="26" stroke="#fff" stroke-width="3" stroke-linecap="round"/>`;
   s+=`<line x1="12" y1="22" x2="12" y2="30" stroke="#fff" stroke-width="2"/>`;
   s+=`<line x1="${12+bar}" y1="22" x2="${12+bar}" y2="30" stroke="#fff" stroke-width="2"/>`;
   s+=`<text x="${12+bar+6}" y="30" font-size="10.5" font-weight="bold" fill="#fff" stroke="#1F3350" stroke-width="2.5" paint-order="stroke">20m</text>`;
+  s+=`<text x="16" y="52" font-size="11" font-weight="bold" fill="#fff" stroke="#1F3350" stroke-width="2.5" paint-order="stroke">↑北</text>`;
   document.getElementById("ov").innerHTML=s;
+}
+
+/* スライダーの溝そのものを1日のタイムラインにする */
+const BANDCOL={0:"#C9D2DC",1:"#E7B065",2:"#8795A8",3:"#DCE3EA"};
+function bandGradient(r){
+  const st=[];let prev=null;
+  for(let t=0;t<1440;t++){
+    const v=r.arr[t];
+    if(v!==prev){
+      const pc=(t/1439*100).toFixed(2);
+      if(prev!==null)st.push(`${BANDCOL[prev]} ${pc}%`);
+      st.push(`${BANDCOL[v]} ${pc}%`);
+      prev=v;
+    }
+  }
+  st.push(`${BANDCOL[prev]} 100%`);
+  return `linear-gradient(90deg,${st.join(",")})`;
+}
+function drawTicks(r){
+  const el=document.getElementById("mticks");
+  const pos=v=>`left:calc(14px + ${(v/1439).toFixed(4)} * (100% - 28px))`;
+  let h="";
+  // 日の出・日の入りは▲マークだけ（文字は下の行にまとめて出す）
+  if(r.rise!=null)h+=`<span class="mk" style="${pos(r.rise)}">▲</span>`;
+  if(r.set!=null)h+=`<span class="mk" style="${pos(r.set)}">▲</span>`;
+  [6,9,12,15,18].forEach(hh=>{h+=`<span class="tk" style="${pos(hh*60)}">${hh}時</span>`;});
+  el.innerHTML=h;
+  document.getElementById("mrise").textContent=
+    (r.rise!=null?`日の出 ${fmtT(r.rise)}`:"")+(r.set!=null?`　日の入 ${fmtT(r.set)}`:"");
+}
+function sunRead(){
+  const dt=seaDate(S.sea),org=MO.house||{lat:MAP.lat,lon:MAP.lon},p=sunPos(dt,S.t,org.lat,org.lon);
+  document.getElementById("mtV").textContent=fmtT(S.t);
+  document.getElementById("mtSun").textContent=p.alt>0
+    ?`高度 ${p.alt.toFixed(0)}°／${dir8(p.az)}の空（方位${p.az.toFixed(0)}°）`:"太陽は地平線の下";
 }
 
 /* ---- 更新 ---- */
@@ -1170,7 +1266,7 @@ function updateMap(){
   document.getElementById("mvHours").innerHTML=r.sunMin>0
     ?`${Math.floor(r.sunMin/60)}<small>時間</small>${String(r.sunMin%60).padStart(2,"0")}<small>分</small>`:`0<small>時間</small>`;
   const sp=document.getElementById("mvSpan");
-  sp.textContent=segText(r.segs);sp.style.fontSize=r.segs.length>1?"12.5px":"15px";
+  sp.textContent=segText(r.segs);sp.style.fontSize=r.segs.length>1?"11px":"13.5px";
   document.getElementById("mvReg").textContent=r.regMin>0?fmtH(r.regMin):"0分";
   document.getElementById("mvNote").innerHTML=MO.blds.length
     ?noteFor(r,dt):"まだ建物を置いていないので「周りに何もない」状態の数字です。<b>航空写真を見ながら、南側の家をタップ</b>してください。";
@@ -1181,19 +1277,16 @@ function updateMap(){
     const b=MO.blds[top[1]];
     cel.innerHTML=`<div class="culprit">日当たりを奪っている主犯は <b>${top[1]+1}番</b>（${dir8(bearing(MO.house,b))}に${Math.max(0,distM(MO.house,b)-b.w/2).toFixed(1)}m・${hName(b.h)}）。1日のうち <b>${fmtH(top[0])}</b> を遮っています。${top[0]>=180?"この1棟を外せるかどうかで、この家の評価は変わります。":""}</div>`;
   }else cel.innerHTML="";
-  drawTimeline(r,"mtimeline");
   renderBldList();drawOverlay();
-  document.getElementById("mtslider").value=S.t;
-  document.getElementById("mtV").innerHTML=fmtT(S.t)+'<span id="mtSun"></span>';
-  const org=MO.house||{lat:MAP.lat,lon:MAP.lon},p=sunPos(dt,S.t,org.lat,org.lon);
-  document.getElementById("mtSun").textContent=`　高度 ${p.alt>0?p.alt.toFixed(0)+"°":"—"}／方位 ${p.az.toFixed(0)}°`;
+  const sl=document.getElementById("mtslider");
+  sl.value=S.t; sl.style.background=bandGradient(r); drawTicks(r); sunRead();
 }
 function syncPicks(){
   document.querySelectorAll(".p-dir,.p-mdir").forEach(b=>b.classList.toggle("sel",+b.dataset.az===S.winAz));
   document.querySelectorAll(".p-floor,.p-mfloor").forEach(b=>b.classList.toggle("sel",+b.dataset.h===S.sill));
   document.querySelectorAll(".p-sea,.p-msea").forEach(b=>b.classList.toggle("sel",b.dataset.s===S.sea));
 }
-function bothUpdate(){syncPicks();update();updateMap();}
+function bothUpdate(){stopPlay();syncPicks();update();updateMap();}
 
 /* ---- 操作 ---- */
 let drag=null;
@@ -1219,7 +1312,12 @@ function mapTap(e){
   const[la,lo]=pxToLatLon(wx,wy,MAP.z);
   const[ccx,ccy]=worldPx(MAP.lat,MAP.lon,MAP.z);
   const x=wx-(ccx-MAP.W/2), y=wy-(ccy-MAP.H/2);   // 表示フレーム座標（当たり判定用）
-  if(MO.mode==="house"){MO.house={lat:la,lon:lo};setMode("bld");}
+  if(MO.mode==="house"){
+    MO.house={lat:la,lon:lo};
+    MAP.lat=la;MAP.lon=lo;                      // 家を中央に置き直す
+    if(MAP.z<19)MAP.z=19;                       // 隣家が判別できる縮尺まで寄る
+    renderTiles();setMode("bld");
+  }
   else{
     const m=mpp();let hit=-1;
     MO.blds.forEach((b,i)=>{const[bx,by]=scr(b.lat,b.lon),hp=Math.max(9,(b.w/2)/m*0.9);
@@ -1237,8 +1335,8 @@ function setMode(m){
 document.getElementById("modeHouse").addEventListener("click",()=>setMode("house"));
 document.getElementById("modeBld").addEventListener("click",()=>setMode("bld"));
 document.getElementById("clearBld").addEventListener("click",()=>{MO.blds=[];updateHint();updateMap();});
-document.getElementById("zin").addEventListener("click",()=>{if(MAP.z<18){MAP.z++;renderTiles();drawOverlay();}});
-document.getElementById("zout").addEventListener("click",()=>{if(MAP.z>15){MAP.z--;renderTiles();drawOverlay();}});
+document.getElementById("zin").addEventListener("click",()=>{if(MAP.z<19){MAP.z++;renderTiles();drawOverlay();}});
+document.getElementById("zout").addEventListener("click",()=>{if(MAP.z>16){MAP.z--;renderTiles();drawOverlay();}});
 document.getElementById("layerBtn").addEventListener("click",e=>{
   MAP.layer=MAP.layer==="seamlessphoto"?"pale":"seamlessphoto";
   e.target.textContent=MAP.layer==="seamlessphoto"?"地図に切替":"写真に切替";
@@ -1258,10 +1356,32 @@ document.querySelectorAll(".p-msea").forEach(b=>b.addEventListener("click",()=>{
 document.querySelectorAll(".p-dir,.p-floor,.p-sea").forEach(b=>b.addEventListener("click",()=>{syncPicks();updateMap();}));
 document.getElementById("mtslider").addEventListener("input",e=>{
   S.t=+e.target.value;document.getElementById("tslider").value=S.t;
-  document.getElementById("mtV").innerHTML=fmtT(S.t)+'<span id="mtSun"></span>';
-  const dt=seaDate(S.sea),org=MO.house||{lat:MAP.lat,lon:MAP.lon},p=sunPos(dt,S.t,org.lat,org.lon);
-  document.getElementById("mtSun").textContent=`　高度 ${p.alt>0?p.alt.toFixed(0)+"°":"—"}／方位 ${p.az.toFixed(0)}°`;
-  drawOverlay();drawTimeline(calcDayMap(dt),"mtimeline");});
+  sunRead();drawOverlay();});
+
+/* ▶ 1日を再生：日の出から日の入りまで影を掃かせる（時間駆動・背景タブでも破綻しない） */
+let playing=null;
+function stopPlay(){
+  if(!playing)return;
+  clearInterval(playing.id);playing=null;
+  const b=document.getElementById("playBtn");
+  b.textContent="▶ 1日を再生";b.classList.remove("on");
+}
+document.getElementById("playBtn").addEventListener("click",()=>{
+  if(playing){stopPlay();return;}
+  const r=calcDayMap(seaDate(S.sea));
+  const a=Math.max(0,(r.rise??300)-20), b=Math.min(1439,(r.set??1140)+20);
+  const btn=document.getElementById("playBtn");
+  btn.textContent="■ 停止";btn.classList.add("on");
+  const sl=document.getElementById("mtslider");
+  const t0=Date.now(), DUR=8000;
+  playing={id:setInterval(()=>{
+    const prog=(Date.now()-t0)/DUR;
+    S.t=prog>=1?b:Math.round(a+(b-a)*prog);
+    sl.value=S.t;sunRead();drawOverlay();
+    if(prog>=1)stopPlay();
+  },60)};
+});
+
 document.getElementById("tslider").addEventListener("input",()=>{document.getElementById("mtslider").value=S.t;});
 // 表示・リサイズ・タブ切替のすべてを ResizeObserver で拾う（測定タイミング依存を排除）
 if(window.ResizeObserver){
