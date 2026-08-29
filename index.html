@@ -285,6 +285,20 @@ tr.me td{background:var(--gold-pale)}
 .scrubCard .legend i{border:1px solid rgba(255,255,255,.35)}
 
 
+
+.mapbar.sub{margin-top:6px}
+.mapbar.sub button{font-size:11.5px;padding:8px 2px;background:#fff;border-color:#DCE3EA;color:var(--gray)}
+.mapbar.sub button:not(:disabled):active{transform:scale(.95)}
+.mapbar.sub button:disabled{opacity:.42;cursor:default}
+.bldrow.sel{border-color:var(--gold);background:var(--gold-pale);box-shadow:0 0 0 3px rgba(231,176,101,.25)}
+.restoreNote{display:none;align-items:center;gap:8px;background:var(--blue-pale);
+  border:1.5px solid #BDDCEF;border-radius:11px;padding:9px 11px;font-size:12px;
+  margin-top:10px;color:var(--blue-dark);font-weight:700;line-height:1.6}
+.restoreNote.show{display:flex}
+.restoreNote span{flex:1;min-width:0}
+.restoreNote button{flex:none;font-family:inherit;font-size:11px;font-weight:900;color:#fff;
+  background:var(--navy);border:none;border-radius:999px;padding:6px 11px;cursor:pointer}
+
 /* ===== 使い方デモ ===== */
 .demoBar{margin-top:18px}
 .demoBtn{display:block;width:100%;font-family:inherit;
@@ -401,9 +415,13 @@ body.demoing .maparea{cursor:default}
   <div class="mapbar">
     <button id="modeHouse">🏠 家の位置</button>
     <button id="modeBld" class="on">🏢 建物を置く</button>
+  </div>
+  <div class="mapbar sub">
+    <button id="undoBtn" disabled>↩ ひとつ戻す</button>
     <button id="clearBld">🗑 全部消す</button>
   </div>
   <div class="hintbar" id="hint"></div>
+  <div class="restoreNote" id="restoreNote"><span></span><button id="resetAll">最初から</button></div>
 
   <div class="bldlist" id="bldlist"></div>
 
@@ -1043,7 +1061,7 @@ document.getElementById("addr").addEventListener("keydown",e=>{if(e.key==="Enter
 
 /* ================= 地図モード ================= */
 const MAP={lat:35.6895,lon:139.6917,z:18,layer:"seamlessphoto",W:340,H:330};
-const MO={house:null,blds:[],mode:"bld"};
+const MO={house:null,blds:[],mode:"bld",sel:-1};
 const HOPT=[["平屋",4],["2階建て",6.5],["3階建て",9.5],["4〜5階",14],["6階以上",25]];
 const WOPT=[["幅6m",6],["幅9m",9],["幅14m",14],["幅22m",22]];
 const hName=h=>(HOPT.find(o=>o[1]==h)||["建物"])[0];
@@ -1130,14 +1148,14 @@ function calcDayMap(dt){
 
 /* ---- タイル描画 ---- */
 const ma=document.getElementById("maparea"),tilesEl=document.getElementById("tiles");
-let RENDER={left:0,top:0};
+let RENDER={left:0,top:0,z:18};
 function mapResize(){if(ma.clientWidth>0){MAP.W=ma.clientWidth;MAP.H=ma.clientHeight;}}
 const TILEMAX=18;   // 地理院の航空写真はz18が上限。それ以上は同じタイルを拡大して使う
 function renderTiles(){
   const[cx,cy]=worldPx(MAP.lat,MAP.lon,MAP.z);
   const left=cx-MAP.W/2,top=cy-MAP.H/2;
-  RENDER={left,top};
-  const tz=Math.min(TILEMAX,MAP.z);
+  RENDER={left,top,z:MAP.z};
+  const tz=Math.min(TILEMAX,Math.max(2,Math.round(MAP.z)));
   const ts=256*Math.pow(2,MAP.z-tz);                 // 画面上でのタイル1枚の大きさ
   const n=Math.pow(2,tz),ext=MAP.layer==="seamlessphoto"?"jpg":"png";
   let html="";
@@ -1151,8 +1169,11 @@ function renderTiles(){
   tilesEl.style.transform="translate(0px,0px)";
 }
 function positionTiles(){
+  const sc=Math.pow(2,MAP.z-RENDER.z);            // ピンチ中は拡大率も乗せる
   const[cx,cy]=worldPx(MAP.lat,MAP.lon,MAP.z);
-  tilesEl.style.transform=`translate(${(RENDER.left-(cx-MAP.W/2)).toFixed(1)}px,${(RENDER.top-(cy-MAP.H/2)).toFixed(1)}px)`;
+  const dx=RENDER.left*sc-(cx-MAP.W/2), dy=RENDER.top*sc-(cy-MAP.H/2);
+  tilesEl.style.transformOrigin="0 0";
+  tilesEl.style.transform=`translate(${dx.toFixed(2)}px,${dy.toFixed(2)}px) scale(${sc.toFixed(4)})`;
 }
 
 /* ---- オーバーレイ ---- */
@@ -1184,8 +1205,9 @@ function drawOverlay(){
   // 建物：塗りつぶさず、輪郭と番号だけ（影を主役にする）
   MO.blds.forEach((b,i)=>{
     const[cx,cy]=scr(b.lat,b.lon),hp=Math.max(7,(b.w/2)/m);
-    s+=`<rect x="${(cx-hp).toFixed(1)}" y="${(cy-hp).toFixed(1)}" width="${(hp*2).toFixed(1)}" height="${(hp*2).toFixed(1)}" fill="#fff" fill-opacity=".14" stroke="#fff" stroke-width="2" stroke-opacity=".9" rx="2"/>`;
-    s+=`<circle cx="${(cx-hp).toFixed(1)}" cy="${(cy-hp).toFixed(1)}" r="8.5" fill="#1F3350" stroke="#fff" stroke-width="1.5"/>`;
+    const on=(MO.sel===i);
+    s+=`<rect x="${(cx-hp).toFixed(1)}" y="${(cy-hp).toFixed(1)}" width="${(hp*2).toFixed(1)}" height="${(hp*2).toFixed(1)}" fill="${on?"#E7B065":"#fff"}" fill-opacity="${on?.3:.14}" stroke="${on?"#E7B065":"#fff"}" stroke-width="${on?3:2}" stroke-opacity=".95" rx="2"/>`;
+    s+=`<circle cx="${(cx-hp).toFixed(1)}" cy="${(cy-hp).toFixed(1)}" r="9" fill="${on?"#D99A44":"#1F3350"}" stroke="#fff" stroke-width="1.8"/>`;
     s+=`<text x="${(cx-hp).toFixed(1)}" y="${(cy-hp+4).toFixed(1)}" font-size="11" font-weight="bold" fill="#fff" text-anchor="middle">${i+1}</text>`;
   });
 
@@ -1274,7 +1296,7 @@ function renderBldList(){
   el.innerHTML=MO.blds.map((b,i)=>{
     const d=MO.house?Math.max(0,distM(MO.house,b)-b.w/2):null;
     const az=MO.house?bearing(MO.house,b):0;
-    return `<div class="bldrow"><div class="no">${i+1}</div>
+    return `<div class="bldrow${MO.sel===i?" sel":""}"><div class="no">${i+1}</div>
       <select class="bh" data-i="${i}">${HOPT.map(o=>`<option value="${o[1]}"${o[1]==b.h?" selected":""}>${o[0]}</option>`).join("")}</select>
       <select class="bw" data-i="${i}">${WOPT.map(o=>`<option value="${o[1]}"${o[1]==b.w?" selected":""}>${o[0]}</option>`).join("")}</select>
       <div class="dst">${d!=null?dir8(az)+"<br>"+d.toFixed(1)+"m":""}</div>
@@ -1284,8 +1306,9 @@ function renderBldList(){
 function updateHint(){
   const el=document.getElementById("hint");
   if(MO.mode==="house")el.innerHTML="🏠 まず<b>調べたい家（窓）の位置を航空写真の上でタップ</b>してください。置いたら自動で建物モードに切り替わります。";
-  else if(!MO.blds.length)el.innerHTML="🏢 <b>南側の建物からタップ</b>していってください。置いた建物をもう一度タップすると消えます。";
-  else el.innerHTML=`🏢 建物を <b>${MO.blds.length}件</b> 配置中。階数は下のリストで変えられます。もう一度タップで削除。`;
+  else if(!MO.blds.length)el.innerHTML="🏢 <b>南側の建物からタップ</b>していってください。指2本でひろげると拡大できます。";
+  else if(MO.sel>=0)el.innerHTML=`🏢 <b>${MO.sel+1}番</b>を選択中。階数と幅は下のリストで変えられます。消すときはリストの<b>✕</b>から。`;
+  else el.innerHTML=`🏢 建物を <b>${MO.blds.length}件</b> 配置中。建物をタップすると選べます。消すときはリストの<b>✕</b>から。`;
 }
 function updateMap(){
   const dt=seaDate(S.sea),r=calcDayMap(dt);
@@ -1317,45 +1340,97 @@ function syncPicks(){
   document.querySelectorAll(".p-floor,.p-mfloor").forEach(b=>b.classList.toggle("sel",+b.dataset.h===S.sill));
   document.querySelectorAll(".p-sea,.p-msea").forEach(b=>b.classList.toggle("sel",b.dataset.s===S.sea));
 }
-function bothUpdate(){stopPlay();syncPicks();update();updateMap();}
+function bothUpdate(){stopPlay();syncPicks();update();updateMap();saveState();}
 
 /* ---- 操作 ---- */
-let drag=null;
-ma.addEventListener("pointerdown",e=>{if(demo)return;ma.setPointerCapture(e.pointerId);drag={x:e.clientX,y:e.clientY,moved:0};});
+let drag=null, pinch=null;
+const ptrs=new Map();
+const ZMIN=16, ZMAX=19.6;
+function midOf(){
+  const a=[...ptrs.values()];
+  const r=ma.getBoundingClientRect();
+  return {x:(a[0].x+a[1].x)/2-r.left, y:(a[0].y+a[1].y)/2-r.top,
+          d:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)};
+}
+ma.addEventListener("pointerdown",e=>{
+  if(demo)return;
+  // 先に指を登録する。setPointerCapture は端末によっては例外を投げるので後ろに置く
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  try{ ma.setPointerCapture(e.pointerId); }catch(err){}
+  if(ptrs.size===2){
+    drag=null;
+    const m=midOf(), [cx,cy]=worldPx(MAP.lat,MAP.lon,MAP.z);
+    pinch={d0:m.d, z0:MAP.z, ax:cx-MAP.W/2+m.x, ay:cy-MAP.H/2+m.y};   // 指の中間にある地点を固定する
+  }else if(ptrs.size===1){
+    drag={x:e.clientX,y:e.clientY,moved:0};
+  }
+});
 ma.addEventListener("pointermove",e=>{
+  if(!ptrs.has(e.pointerId))return;
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pinch&&ptrs.size>=2){
+    const m=midOf();
+    if(m.d<10)return;
+    const z=Math.max(ZMIN,Math.min(ZMAX,pinch.z0+Math.log2(m.d/pinch.d0)));
+    const k=Math.pow(2,z-pinch.z0);
+    [MAP.lat,MAP.lon]=pxToLatLon(pinch.ax*k-m.x+MAP.W/2, pinch.ay*k-m.y+MAP.H/2, z);
+    MAP.z=z;
+    positionTiles();drawOverlay();
+    return;
+  }
   if(!drag)return;
-  const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
+  const dx=e.clientX-drag.x, dy=e.clientY-drag.y;
   drag.moved+=Math.abs(dx)+Math.abs(dy);drag.x=e.clientX;drag.y=e.clientY;
   const[cx,cy]=worldPx(MAP.lat,MAP.lon,MAP.z);
   [MAP.lat,MAP.lon]=pxToLatLon(cx-dx,cy-dy,MAP.z);
   positionTiles();drawOverlay();
 });
-ma.addEventListener("pointerup",e=>{
-  if(!drag)return;
-  const moved=drag.moved;drag=null;
-  if(moved<7)mapTap(e); else {renderTiles();drawOverlay();}
-});
-ma.addEventListener("pointercancel",()=>{drag=null;});
+function endPtr(e){
+  if(!ptrs.has(e.pointerId))return;
+  try{ ma.releasePointerCapture(e.pointerId); }catch(err){}
+  const wasPinch=!!pinch, moved=drag?drag.moved:999;
+  ptrs.delete(e.pointerId);
+  if(ptrs.size<2&&pinch){pinch=null;drag=null;renderTiles();drawOverlay();saveState();}
+  if(ptrs.size===0){
+    if(!wasPinch&&moved<9)mapTap(e); else {renderTiles();drawOverlay();saveState();}
+    drag=null;
+  }else if(ptrs.size===1&&!pinch){
+    const p=[...ptrs.values()][0];
+    drag={x:p.x,y:p.y,moved:999};        // 残った指はそのまま移動に使う（タップ扱いにしない）
+  }
+}
+ma.addEventListener("pointerup",endPtr);
+ma.addEventListener("pointercancel",endPtr);
 function mapTap(e){
   // タイル要素の矩形はドラッグ中の transform も含むので、そこから世界座標を復元する
   const tr=tilesEl.getBoundingClientRect();
-  const wx=RENDER.left+(e.clientX-tr.left), wy=RENDER.top+(e.clientY-tr.top);
+  const sc=Math.pow(2,MAP.z-RENDER.z);
+  const wx=RENDER.left*sc+(e.clientX-tr.left), wy=RENDER.top*sc+(e.clientY-tr.top);
   const[la,lo]=pxToLatLon(wx,wy,MAP.z);
   const[ccx,ccy]=worldPx(MAP.lat,MAP.lon,MAP.z);
   const x=wx-(ccx-MAP.W/2), y=wy-(ccy-MAP.H/2);   // 表示フレーム座標（当たり判定用）
   if(MO.mode==="house"){
+    pushHist();
     MO.house={lat:la,lon:lo};
-    MAP.lat=la;MAP.lon=lo;                      // 家を中央に置き直す
-    if(MAP.z<19)MAP.z=19;                       // 隣家が判別できる縮尺まで寄る
+    MAP.lat=la;MAP.lon=lo;
+    if(MAP.z<19)MAP.z=19;
     renderTiles();setMode("bld");
-  }
-  else{
+  }else{
+    // 指で押せるよう当たり判定は最低44px四方。当てたら「選択」だけして、消すのは✕ボタンから
     const m=mpp();let hit=-1;
-    MO.blds.forEach((b,i)=>{const[bx,by]=scr(b.lat,b.lon),hp=Math.max(9,(b.w/2)/m*0.9);
+    MO.blds.forEach((b,i)=>{const[bx,by]=scr(b.lat,b.lon),hp=Math.max(22,(b.w/2)/m);
       if(Math.abs(x-bx)<=hp&&Math.abs(y-by)<=hp)hit=i;});
-    if(hit>=0)MO.blds.splice(hit,1);else MO.blds.push({lat:la,lon:lo,w:9,h:6.5});
+    if(hit>=0){
+      MO.sel=hit;
+      const row=document.querySelectorAll("#bldlist .bldrow")[hit];
+      if(row)row.scrollIntoView({block:"nearest"});
+    }else{
+      pushHist();
+      MO.blds.push({lat:la,lon:lo,w:9,h:6.5});
+      MO.sel=MO.blds.length-1;
+    }
   }
-  updateHint();updateMap();
+  updateHint();updateMap();saveState();
 }
 function setMode(m){
   MO.mode=m;
@@ -1365,22 +1440,26 @@ function setMode(m){
 }
 document.getElementById("modeHouse").addEventListener("click",()=>setMode("house"));
 document.getElementById("modeBld").addEventListener("click",()=>setMode("bld"));
-document.getElementById("clearBld").addEventListener("click",()=>{MO.blds=[];updateHint();updateMap();});
-document.getElementById("zin").addEventListener("click",()=>{if(MAP.z<19){MAP.z++;renderTiles();drawOverlay();}});
-document.getElementById("zout").addEventListener("click",()=>{if(MAP.z>16){MAP.z--;renderTiles();drawOverlay();}});
+document.getElementById("clearBld").addEventListener("click",()=>{
+  if(!MO.blds.length)return;
+  if(!confirm(`置いた建物 ${MO.blds.length}件をすべて消します。よろしいですか？`))return;
+  pushHist();MO.blds=[];MO.sel=-1;updateHint();updateMap();saveState();});
+document.getElementById("zin").addEventListener("click",()=>{const z=Math.min(19,Math.round(MAP.z)+1);if(z!==MAP.z){MAP.z=z;renderTiles();drawOverlay();saveState();}});
+document.getElementById("zout").addEventListener("click",()=>{const z=Math.max(16,Math.round(MAP.z)-1);if(z!==MAP.z){MAP.z=z;renderTiles();drawOverlay();saveState();}});
 document.getElementById("layerBtn").addEventListener("click",e=>{
   MAP.layer=MAP.layer==="seamlessphoto"?"pale":"seamlessphoto";
   e.target.textContent=MAP.layer==="seamlessphoto"?"地図に切替":"写真に切替";
   document.querySelector(".attr").textContent=MAP.layer==="seamlessphoto"?"地理院タイル（航空写真）":"地理院タイル（淡色地図）";
   renderTiles();});
 document.getElementById("bldlist").addEventListener("change",e=>{
-  const i=+e.target.dataset.i;
+  const i=+e.target.dataset.i;pushHist();
   if(e.target.classList.contains("bh"))MO.blds[i].h=+e.target.value;
   if(e.target.classList.contains("bw"))MO.blds[i].w=+e.target.value;
-  updateMap();});
+  MO.sel=i;updateMap();saveState();});
 document.getElementById("bldlist").addEventListener("click",e=>{
   if(!e.target.classList.contains("del"))return;
-  MO.blds.splice(+e.target.dataset.i,1);updateHint();updateMap();});
+  pushHist();MO.blds.splice(+e.target.dataset.i,1);MO.sel=-1;
+  updateHint();updateMap();saveState();});
 document.querySelectorAll(".p-mdir").forEach(b=>b.addEventListener("click",()=>{S.winAz=+b.dataset.az;bothUpdate();}));
 document.querySelectorAll(".p-mfloor").forEach(b=>b.addEventListener("click",()=>{S.sill=+b.dataset.h;bothUpdate();}));
 document.querySelectorAll(".p-msea").forEach(b=>b.addEventListener("click",()=>{S.sea=b.dataset.s;bothUpdate();}));
@@ -1428,6 +1507,9 @@ if(window.ResizeObserver){
 function syncMapToPlace(){
   MAP.lat=S.lat;MAP.lon=S.lon;MO.house={lat:S.lat,lon:S.lon};MO.blds=[];
   mapResize();renderTiles();setMode("house");updateMap();
+  MO.sel=-1;HIST.length=0;updateUndoBtn();
+  document.getElementById("restoreNote").classList.remove("show");
+  saveState();
 }
 async function msearch(){
   const q=document.getElementById("maddr").value.trim();if(!q)return;
@@ -1443,6 +1525,65 @@ async function msearch(){
 document.getElementById("mgo").addEventListener("click",msearch);
 document.getElementById("maddr").addEventListener("keydown",e=>{if(e.key==="Enter")msearch();});
 
+
+
+/* ===== 元に戻す ===== */
+const HIST=[];
+function pushHist(){
+  HIST.push(JSON.stringify({h:MO.house,b:MO.blds}));
+  if(HIST.length>40)HIST.shift();
+  updateUndoBtn();
+}
+function updateUndoBtn(){
+  const b=document.getElementById("undoBtn");
+  if(b)b.disabled=HIST.length===0;
+}
+function undo(){
+  if(!HIST.length)return;
+  const st=JSON.parse(HIST.pop());
+  MO.house=st.h;MO.blds=st.b;MO.sel=-1;
+  if(MO.house){MAP.lat=MO.house.lat;MAP.lon=MO.house.lon;}
+  renderTiles();updateHint();updateMap();saveState();updateUndoBtn();
+}
+
+/* ===== 状態の保存と復元（この端末のブラウザにだけ残る） ===== */
+const SKEY="bororich-hiatari-v1";
+let restored=false;
+function saveState(){
+  if(demo)return;                       // デモ中の状態は保存しない
+  try{
+    localStorage.setItem(SKEY,JSON.stringify({
+      v:1,lat:MAP.lat,lon:MAP.lon,z:MAP.z,layer:MAP.layer,
+      house:MO.house,blds:MO.blds,
+      winAz:S.winAz,sill:S.sill,sea:S.sea,name:S.name,slat:S.lat,slon:S.lon,
+      addr:document.getElementById("maddr").value
+    }));
+  }catch(e){}                           // プライベートモード等で失敗しても無視
+}
+function loadState(){
+  let d=null;
+  try{ d=JSON.parse(localStorage.getItem(SKEY)||"null"); }catch(e){ return false; }
+  if(!d||d.v!==1||!d.house||!Array.isArray(d.blds))return false;
+  try{
+    MAP.lat=d.lat;MAP.lon=d.lon;MAP.z=d.z;MAP.layer=d.layer||"seamlessphoto";
+    MO.house=d.house;MO.blds=d.blds;
+    S.winAz=d.winAz;S.sill=d.sill;S.sea=d.sea;
+    if(d.name){S.name=d.name;S.lat=d.slat;S.lon=d.slon;}
+    if(d.addr)document.getElementById("maddr").value=d.addr;
+    document.getElementById("addr").value=d.addr||"";
+    if(MAP.layer!=="seamlessphoto"){
+      document.getElementById("layerBtn").textContent="写真に切替";
+      document.querySelector(".attr").textContent="地理院タイル（淡色地図）";
+    }
+    return true;
+  }catch(e){ return false; }
+}
+function clearState(){ try{ localStorage.removeItem(SKEY); }catch(e){} }
+document.getElementById("undoBtn").addEventListener("click",undo);
+document.getElementById("resetAll").addEventListener("click",()=>{
+  if(!confirm("入力をすべて消して、最初の状態に戻します。よろしいですか？"))return;
+  clearState();location.reload();
+});
 
 /* ================= 使い方デモ ================= */
 // 実在の住宅密集地（足立区西新井本町あたり）を舞台にする。家が5〜8m間隔で建ち並ぶので
@@ -1513,6 +1654,7 @@ const DEMO_STEPS=[
 function demoStop(){
   if(!demo)return;
   clearTimeout(demo.t);demo=null;stopPlay();
+  saveState();                          // 画面に出ている状態とリロード結果を揃える
   document.body.classList.remove("demoing");
   document.getElementById("demoCap").classList.remove("show");
   const b=document.getElementById("demoBtn");
@@ -1544,8 +1686,20 @@ document.getElementById("demoBtn").addEventListener("click",()=>{
 document.getElementById("demoSkip").addEventListener("click",demoStop);
 
 function initMap(){
-  mapResize();MAP.lat=S.lat;MAP.lon=S.lon;MO.house={lat:S.lat,lon:S.lon};
-  renderTiles();setMode("house");updateMap();
+  mapResize();
+  restored=loadState();
+  if(!restored){MAP.lat=S.lat;MAP.lon=S.lon;MO.house={lat:S.lat,lon:S.lon};}
+  renderTiles();
+  setMode(restored?"bld":"house");
+  syncPicks();
+  if(restored){showPlace();update();}   // 手入力タブの地点表示も復元後の値に合わせる
+  updateMap();
+  if(restored){
+    const n=document.getElementById("restoreNote");
+    n.classList.add("show");
+    n.querySelector("span").innerHTML=`前回の続きを表示しています（${S.name||"検索した地点"}／建物${MO.blds.length}件）。`;
+  }
+  updateUndoBtn();
 }
 
 showPlace();update();initMap();
