@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>関東・日当たりチェッカー｜ボロリッチ</title>
+<meta name="description" content="住所と「目の前の建物」を入れるだけ。冬至に何時間日が入るかを計算して、内見に行く前に日当たりで物件をふるいにかけられる関東1都6県向けの判定アプリ。">
+<style>
+  :root{
+    --navy:#1B2A41; --navy2:#22344E; --orange:#F5A623; --red:#C0392B;
+    --green:#1E8449; --gray:#5D6D7E; --light:#F4F6F8;
+    --yellow-bg:#FFF6DE; --red-bg:#FDEDEC; --green-bg:#EAF7EF; --line:#B8C2CC;
+    --sun:#F5A623; --shade:#7B8FA8;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif;
+    background:var(--light);color:var(--navy);font-size:15px;line-height:1.65}
+  .wrap{max-width:480px;margin:0 auto;min-height:100vh;background:#fff;
+    box-shadow:0 0 24px rgba(27,42,65,.08)}
+  header{background:var(--navy);color:#fff;padding:26px 20px 22px;position:relative}
+  header::after{content:"";position:absolute;left:0;right:0;bottom:0;height:4px;background:var(--orange)}
+  .h-sub{color:#D9E2EC;font-size:11px;letter-spacing:.05em}
+  h1{font-size:21px;margin-top:4px;line-height:1.4}
+  h1 small{display:block;color:var(--orange);font-size:12px;margin-top:5px;font-weight:600}
+  nav{display:flex;background:var(--navy2);position:sticky;top:0;z-index:10}
+  nav button{flex:1;background:none;border:none;color:#8FA3BC;font-size:12px;font-weight:700;
+    padding:12px 2px;cursor:pointer;border-bottom:3px solid transparent;font-family:inherit}
+  nav button.on{color:#fff;border-bottom-color:var(--orange)}
+  section{display:none;padding:20px 18px 30px}
+  section.on{display:block}
+  .sec-title{font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;margin-bottom:4px}
+  .num{background:var(--orange);color:#fff;width:24px;height:24px;border-radius:50%;
+    display:inline-flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+  .sec-sub{color:var(--gray);font-size:12px;margin-bottom:14px}
+  .q-label{font-size:13px;font-weight:800;margin:16px 0 8px;display:flex;justify-content:space-between;align-items:baseline}
+  .q-label span{font-weight:600;font-size:11.5px;color:var(--gray)}
+  .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}
+  .grid.four{grid-template-columns:repeat(4,1fr)}
+  .grid.two{grid-template-columns:1fr 1fr}
+  .pick{border:1.5px solid var(--line);background:#fff;border-radius:10px;padding:11px 2px;
+    font-size:13.5px;font-weight:700;color:var(--navy);cursor:pointer;font-family:inherit;line-height:1.3}
+  .pick small{display:block;font-size:10.5px;font-weight:600;color:var(--gray);margin-top:2px}
+  .pick.sel{border-color:var(--orange);background:var(--yellow-bg)}
+  .pick.sel small{color:#9A6A00}
+  /* 住所検索 */
+  .searchrow{display:flex;gap:7px}
+  .searchrow input{flex:1;border:1.5px solid var(--line);border-radius:10px;padding:11px 12px;
+    font-size:15px;color:var(--navy);font-family:inherit;min-width:0}
+  .searchrow input:focus{outline:2px solid var(--orange)}
+  .searchrow button{background:var(--navy);color:#fff;border:none;border-radius:10px;
+    padding:0 16px;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;flex-shrink:0}
+  .place{margin-top:8px;font-size:12px;color:var(--gray);background:var(--light);
+    border-radius:8px;padding:8px 10px}
+  .place b{color:var(--navy)}
+  /* スライダー */
+  .slider{width:100%;-webkit-appearance:none;appearance:none;height:6px;border-radius:3px;
+    background:#DDE3EA;outline:none;margin:6px 0 2px}
+  .slider::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;
+    background:var(--orange);cursor:pointer;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+  .slider::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:var(--orange);
+    cursor:pointer;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+  .sv{font-size:19px;font-weight:900}
+  .sv span{font-size:12px;font-weight:700;color:var(--gray);margin-left:2px}
+  /* 判定カード */
+  .verdict{border-radius:14px;padding:18px 16px;margin-top:20px;color:#fff;background:var(--navy)}
+  .verdict .cap{font-size:11.5px;opacity:.85}
+  .verdict .rank{font-size:15px;font-weight:900;margin-top:2px}
+  .verdict .hours{font-size:38px;font-weight:900;line-height:1.1;margin:6px 0 2px;letter-spacing:-.02em}
+  .verdict .hours small{font-size:15px;margin-left:3px}
+  .verdict .note{font-size:12.5px;line-height:1.6;margin-top:10px;
+    background:rgba(255,255,255,.12);border-radius:9px;padding:10px 12px}
+  .kv{display:flex;gap:8px;margin-top:10px}
+  .kv div{flex:1;background:rgba(255,255,255,.1);border-radius:9px;padding:8px 6px;text-align:center}
+  .kv .k{font-size:10.5px;opacity:.8}
+  .kv .v{font-size:15px;font-weight:900;margin-top:1px}
+  /* 図 */
+  .figbox{background:var(--light);border-radius:12px;padding:12px 12px 8px;margin-top:14px}
+  .figcap{font-size:11.5px;color:var(--gray);margin-bottom:6px;font-weight:700}
+  svg{display:block;width:100%;height:auto}
+  .legend{display:flex;gap:12px;font-size:11px;color:var(--gray);margin-top:6px;flex-wrap:wrap}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+  /* テーブル */
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+  th{background:var(--navy);color:#fff;padding:8px 5px;text-align:center;font-size:11.5px;font-weight:700}
+  th:first-child,td:first-child{text-align:left}
+  td{padding:9px 5px;border-bottom:1px solid #E4E9EF;text-align:center}
+  td.dir{font-weight:800}
+  tr.me td{background:var(--yellow-bg)}
+  .bar{height:7px;border-radius:4px;background:var(--sun);display:block}
+  .barwrap{background:#DDE3EA;border-radius:4px;overflow:hidden;width:100%}
+  /* 情報 */
+  .info{background:var(--light);border-radius:12px;padding:14px;margin-top:14px;font-size:13px;line-height:1.7}
+  .info h3{font-size:13.5px;font-weight:800;margin-bottom:6px}
+  .info h3+p{margin-bottom:0}
+  .info+.info{margin-top:10px}
+  .info ul{margin:6px 0 0 18px}
+  .info li{margin-bottom:5px}
+  .warn{background:var(--red-bg);border-left:4px solid var(--red);border-radius:8px;
+    padding:10px 12px;font-size:12.5px;margin-top:12px;line-height:1.6}
+  .tag{display:inline-block;background:var(--orange);color:#fff;font-size:10.5px;font-weight:800;
+    border-radius:20px;padding:2px 9px;margin-bottom:6px}
+  .cta{background:var(--navy);border-radius:14px;padding:20px 16px;text-align:center;margin-top:22px}
+  .cta .t{color:var(--orange);font-weight:800;font-size:14.5px}
+  .cta .d{color:#D9E2EC;font-size:12px;margin:8px 0 14px;line-height:1.6}
+  .cta a{display:block;background:#06C755;color:#fff;text-decoration:none;font-weight:900;
+    padding:14px;border-radius:10px;font-size:14.5px}
+  footer{background:var(--navy2);color:#8FA3BC;font-size:10.5px;padding:16px 18px 24px;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="h-sub">築古不動産投資／ボロリッチ</div>
+  <h1>関東・日当たりチェッカー
+    <small>内見に行く前に、日当たりで落とす。</small></h1>
+</header>
+
+<nav>
+  <button class="on" data-t="t1">☀️ 日当たり判定</button>
+  <button data-t="t2">🧭 窓の向き比較</button>
+  <button data-t="t3">📖 数字の読み方</button>
+</nav>
+
+<!-- ============ TAB1 ============ -->
+<section id="t1" class="on">
+
+  <div class="sec-title"><span class="num">1</span>物件の場所</div>
+  <div class="sec-sub">関東1都6県。番地まで入れなくても、市区町村までで十分です。</div>
+  <div class="searchrow">
+    <input id="addr" type="text" placeholder="例）茨城県牛久市岡見町" autocomplete="off">
+    <button id="go">検索</button>
+  </div>
+  <div class="grid four" style="margin-top:7px">
+    <button class="pick p-pref" data-la="35.6895" data-lo="139.6917" data-nm="東京（新宿）">東京</button>
+    <button class="pick p-pref" data-la="35.4478" data-lo="139.6425" data-nm="横浜">神奈川</button>
+    <button class="pick p-pref" data-la="35.8570" data-lo="139.6489" data-nm="さいたま">埼玉</button>
+    <button class="pick p-pref" data-la="35.6046" data-lo="140.1233" data-nm="千葉">千葉</button>
+    <button class="pick p-pref" data-la="36.3418" data-lo="140.4468" data-nm="水戸">茨城</button>
+    <button class="pick p-pref" data-la="36.5657" data-lo="139.8836" data-nm="宇都宮">栃木</button>
+    <button class="pick p-pref" data-la="36.3912" data-lo="139.0604" data-nm="前橋">群馬</button>
+    <button class="pick p-pref" data-la="35.1815" data-lo="136.9066" data-nm="名古屋">その他</button>
+  </div>
+  <div class="place" id="place">現在の地点：<b id="placeName">東京（新宿）</b>　<span id="placeLL"></span></div>
+
+  <div class="sec-title" style="margin-top:22px"><span class="num">2</span>調べたい窓の向き</div>
+  <div class="sec-sub">いちばん長くいる部屋（リビング・寝室）の窓で判断します。</div>
+  <div class="grid four" id="dirGrid">
+    <button class="pick p-dir" data-az="0">北</button>
+    <button class="pick p-dir" data-az="45">北東</button>
+    <button class="pick p-dir" data-az="90">東</button>
+    <button class="pick p-dir" data-az="135">南東</button>
+    <button class="pick p-dir sel" data-az="180">南</button>
+    <button class="pick p-dir" data-az="225">南西</button>
+    <button class="pick p-dir" data-az="270">西</button>
+    <button class="pick p-dir" data-az="315">北西</button>
+  </div>
+  <div class="q-label">窓のある階</div>
+  <div class="grid two" id="floorGrid">
+    <button class="pick p-floor sel" data-h="1">1階の窓<small>床から1m</small></button>
+    <button class="pick p-floor" data-h="4">2階の窓<small>床から4m</small></button>
+  </div>
+
+  <div class="sec-title" style="margin-top:22px"><span class="num">3</span>その窓の目の前にある建物</div>
+  <div class="sec-sub">Googleマップの航空写真とストリートビューで、南側に何が建っているか見てから入れてください。</div>
+  <div class="q-label">高さ（階数）</div>
+  <div class="grid" id="hGrid">
+    <button class="pick p-h" data-h="0">なし<small>畑・道路・空地</small></button>
+    <button class="pick p-h" data-h="4">平屋<small>4m</small></button>
+    <button class="pick p-h sel" data-h="6.5">2階建て<small>6.5m</small></button>
+    <button class="pick p-h" data-h="9.5">3階建て<small>9.5m</small></button>
+    <button class="pick p-h" data-h="14">4〜5階<small>14m</small></button>
+    <button class="pick p-h" data-h="25">それ以上<small>25m</small></button>
+  </div>
+  <div class="q-label">窓からの距離 <span>庭・道路をはさんだ実測</span></div>
+  <input class="slider" id="dist" type="range" min="1" max="30" step="0.5" value="6">
+  <div class="sv" id="distV">6.0<span>m</span></div>
+  <div class="q-label">その建物の横幅 <span>連なっているなら大きく</span></div>
+  <input class="slider" id="wid" type="range" min="4" max="60" step="1" value="15">
+  <div class="sv" id="widV">15<span>m</span></div>
+
+  <div class="q-label">いつの日当たりを見るか</div>
+  <div class="grid four" id="seaGrid">
+    <button class="pick p-sea sel" data-s="w">冬至<small>12/21</small></button>
+    <button class="pick p-sea" data-s="e">春秋分<small>3/21</small></button>
+    <button class="pick p-sea" data-s="s">夏至<small>6/21</small></button>
+    <button class="pick p-sea" data-s="t">今日</button>
+  </div>
+
+  <!-- 判定 -->
+  <div class="verdict" id="verdict">
+    <div class="cap" id="vCap">冬至（12/21）／南向きの窓</div>
+    <div class="rank" id="vRank">判定</div>
+    <div class="hours" id="vHours">—</div>
+    <div class="kv">
+      <div><div class="k">日が入る時間帯</div><div class="v" id="vSpan">—</div></div>
+      <div><div class="k">8〜16時のうち</div><div class="v" id="vReg">—</div></div>
+    </div>
+    <div class="note" id="vNote"></div>
+  </div>
+
+  <!-- タイムライン -->
+  <div class="figbox">
+    <div class="figcap">1日の日当たり（日の出→日の入り）</div>
+    <svg id="timeline" viewBox="0 0 400 92"></svg>
+    <div class="legend">
+      <span><i style="background:var(--sun)"></i>日が入る</span>
+      <span><i style="background:var(--shade)"></i>影・朝夕の低すぎる日</span>
+      <span><i style="background:#DDE3EA"></i>太陽が窓の裏側</span>
+    </div>
+  </div>
+
+  <!-- 断面図 -->
+  <div class="figbox">
+    <div class="figcap">真横から見た図（時刻を動かせます）</div>
+    <svg id="section" viewBox="0 0 400 220"></svg>
+    <input class="slider" id="tslider" type="range" min="0" max="1439" step="5" value="720">
+    <div class="sv" id="tV">12:00<span id="tSun"></span></div>
+  </div>
+
+  <!-- 方位盤 -->
+  <div class="figbox">
+    <div class="figcap">真上から見た図（太陽の通り道と影の向き）</div>
+    <svg id="compass" viewBox="0 0 400 292"></svg>
+  </div>
+
+  <div class="warn" id="tip"></div>
+
+</section>
+
+<!-- ============ TAB2 ============ -->
+<section id="t2">
+  <div class="sec-title"><span class="num">A</span>同じ条件で、窓の向きを変えると</div>
+  <div class="sec-sub">「日当たり判定」で入れた建物・距離のまま、8方位を並べました。</div>
+  <div id="dirTableCond" class="place"></div>
+  <table id="dirTable"></table>
+
+  <div class="sec-title" style="margin-top:26px"><span class="num">B</span>季節でどれだけ変わるか</div>
+  <div class="sec-sub">同じ家でも、冬と夏では日の入り方がまるで違います。</div>
+  <table id="seaTable"></table>
+
+  <div class="info">
+    <h3>南向きが正解、とは限りません</h3>
+    <p>上の表は「<b>窓の正面に、同じ建物が同じ距離で建っている家</b>」を、向きだけ変えて並べたものです。目の前が詰まっている場合、真南は不利に出ます。太陽がいちばん高く上がる時間に、まさにその建物が正面にあるからです。</p>
+    <p style="margin-top:8px">つまり<b>「南向き」はチラシの言葉であって、日当たりの答えではありません</b>。前が抜けているかどうかが先で、向きは後です。南向き・日当たり良好と書かれた物件ほど、南側に何が建っているかを地図で確かめてください。</p>
+  </div>
+</section>
+
+<!-- ============ TAB3 ============ -->
+<section id="t3">
+  <div class="info">
+    <span class="tag">なぜ冬至で見るのか</span>
+    <h3>冬至に日が入るなら、1年中入る</h3>
+    <p>太陽がいちばん低くなるのが冬至です。影がいちばん長く伸びる＝その日に日が入れば、あとの季節は必ず入ります。建築基準法の日影規制も、冬至日の8時〜16時の影で測ります。夏に内見して「明るいですね」と言われた家が、冬にまったく日が入らないのはこれが理由です。</p>
+  </div>
+
+  <div class="info">
+    <h3>影の長さは、高さの何倍か</h3>
+    <p>関東の冬至の南中高度はおよそ31度。このとき影は<b>建物の高さの約1.7倍</b>まで伸びます。2階建て（6.5m）なら約11m。つまり<b>南に2階建てがあるなら、11m離れていないと真昼でも影に入る</b>ということです。これが冬至の現実です。</p>
+    <div id="shadowTable"></div>
+  </div>
+
+  <div class="info">
+    <h3>朝夕の「一瞬だけ当たる日」は数えていません</h3>
+    <p>太陽の高度が5度以下のあいだは、日照時間に入れていません。冬の朝、太陽はほとんど真横から昇ります。そんな低い光は、実際には向かいの家・ブロック塀・電柱・街路樹のどれかに必ず遮られるからです。理論上は当たるが、住んでみると当たらない。その分を最初から差し引いた、辛口の数字だと思ってください。</p>
+  </div>
+
+  <div class="info">
+    <h3>時間の目安</h3>
+    <ul>
+      <li><b>5時間以上</b>／日当たり良好。洗濯物も乾き、冬の昼間は暖房が要らない日もある。</li>
+      <li><b>3〜5時間</b>／合格ライン。賃貸に出しても日当たりでは負けない。</li>
+      <li><b>1.5〜3時間</b>／要注意。家賃を強気に取れない。2階の部屋を主寝室にする等の設計変更で戦う。</li>
+      <li><b>1.5時間未満</b>／冬は日陰の家。指値の材料になるが、湿気・カビ・結露の修繕コストを先に見込むこと。</li>
+    </ul>
+  </div>
+
+  <div class="info">
+    <h3>内見のとき、これだけは現地で</h3>
+    <ul>
+      <li>南側の隣家の<b>階数と、境界からの距離</b>を歩幅で測る（1歩＝約0.7m）。</li>
+      <li>南側が<b>空地・駐車場・畑</b>なら、そこに家が建つ前提でもう一度この計算をする。</li>
+      <li>北側の部屋の<b>壁のシミ・カビ・押入れの匂い</b>。日当たりの悪さは必ずここに出ます。</li>
+      <li>電柱・高木・擁壁は地図に写りません。<b>ストリートビューと現地</b>で確認。</li>
+    </ul>
+  </div>
+
+  <div class="warn">
+    <b>このアプリの限界。</b>周りの建物を「目の前の1棟」として計算しています。斜面地・高低差・複数棟に囲まれた家・山や高木の影は反映されません。斜面の上に建つ家は数字より明るく、谷側は数字より暗くなります。最後は必ず現地で、できれば冬の午前と午後に見てください。
+  </div>
+
+  <div class="cta">
+    <div class="t">その物件、買っていいか迷ったら</div>
+    <div class="d">日当たりが「△」でも買っていい物件はあります。数字を送ってくれれば、指値でいけるかを一緒に見ます。<br>書籍『空き家×不動産投資 入門』も無料プレゼント中。</div>
+    <a href="https://utage-system.com/line/open/PC8dzTB3dJcz" target="_blank" rel="noopener">LINEで相談する／書籍を受け取る</a>
+  </div>
+</section>
+
+<footer>
+  太陽位置はNOAAの計算式にもとづく理論値です。住所検索は国土地理院APIを利用しています。<br>
+  © ボロリッチ／築福不動産　※判断材料としてお使いください。最終判断は必ず現地確認のうえで。
+</footer>
+</div>
+
+<script>
+/* ===== 太陽位置（NOAA） ===== */
+const RAD=Math.PI/180, DEG=180/Math.PI;
+function solarParams(jd){
+  const T=(jd-2451545.0)/36525.0;
+  const L0=(280.46646+T*(36000.76983+T*0.0003032))%360;
+  const M=357.52911+T*(35999.05029-0.0001537*T);
+  const e=0.016708634-T*(0.000042037+0.0000001267*T);
+  const C=Math.sin(M*RAD)*(1.914602-T*(0.004817+0.000014*T))
+        +Math.sin(2*M*RAD)*(0.019993-0.000101*T)+Math.sin(3*M*RAD)*0.000289;
+  const omega=125.04-1934.136*T;
+  const appLong=L0+C-0.00569-0.00478*Math.sin(omega*RAD);
+  const e0=23.439291-T*(0.0130042+T*(0.00000016-0.000000504*T));
+  const eps=e0+0.00256*Math.cos(omega*RAD);
+  const decl=Math.asin(Math.sin(eps*RAD)*Math.sin(appLong*RAD))*DEG;
+  const y=Math.pow(Math.tan(eps/2*RAD),2), L0r=L0*RAD, Mr=M*RAD;
+  const eqTime=4*DEG*(y*Math.sin(2*L0r)-2*e*Math.sin(Mr)+4*e*y*Math.sin(Mr)*Math.cos(2*L0r)
+    -0.5*y*y*Math.sin(4*L0r)-1.25*e*e*Math.sin(2*Mr));
+  return {decl,eqTime};
+}
+function sunPos(dt,minJst,lat,lon){
+  const utcMs=Date.UTC(dt.y,dt.m-1,dt.d,0,0,0)+(minJst-540)*60000;
+  const {decl,eqTime}=solarParams(utcMs/86400000+2440587.5);
+  const utcMin=((minJst-540)%1440+1440)%1440;
+  let ha=(utcMin+eqTime+4*lon)/4-180;
+  while(ha<-180)ha+=360; while(ha>180)ha-=360;
+  const la=lat*RAD, de=decl*RAD, h=ha*RAD;
+  const sa=Math.sin(la)*Math.sin(de)+Math.cos(la)*Math.cos(de)*Math.cos(h);
+  const alt=Math.asin(Math.max(-1,Math.min(1,sa)))*DEG;
+  const azS=Math.atan2(Math.sin(h),Math.cos(h)*Math.sin(la)-Math.tan(de)*Math.cos(la))*DEG;
+  return {alt,az:(azS+540)%360};
+}
+const angDiff=(a,b)=>{let d=(a-b+540)%360-180;return d;};
+function fmtT(m){m=Math.round(m);return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0");}
+function fmtH(m){const h=Math.floor(m/60),mm=Math.round(m%60);return h+"時間"+(mm?mm+"分":"");}
+
+/* ===== 状態 ===== */
+const S={lat:35.6895,lon:139.6917,name:"東京（新宿）",winAz:180,sill:1,bh:6.5,bd:6,bw:15,sea:"w",t:720};
+function seaDate(s){
+  const now=new Date(), y=now.getFullYear();
+  if(s==="w")return{y,m:12,d:21,label:"冬至（12/21）"};
+  if(s==="e")return{y,m:3,d:21,label:"春分（3/21）"};
+  if(s==="s")return{y,m:6,d:21,label:"夏至（6/21）"};
+  return{y,m:now.getMonth()+1,d:now.getDate(),label:`今日（${now.getMonth()+1}/${now.getDate()}）`};
+}
+const DIRNAME={0:"北",45:"北東",90:"東",135:"南東",180:"南",225:"南西",270:"西",315:"北西"};
+
+/* ===== 1日ぶんを計算 =====
+   各分について 0=夜 / 1=日が入る / 2=前の建物の影 / 3=その窓に回らない向き
+   高度5度以下の朝夕の斜光は、実際には周囲の家や木に遮られるため日照に数えない */
+const MIN_ALT=5;
+function calcDay(dt,winAz,opt){
+  const o=Object.assign({},S,opt||{});
+  const H=Math.max(0,o.bh-o.sill);          // 窓から見た建物の見かけの高さ
+  const arr=new Uint8Array(1440);
+  let rise=null,set=null,peak=-90,peakMin=720;
+  for(let t=0;t<1440;t++){
+    const p=sunPos(dt,t,o.lat,o.lon);
+    if(p.alt>peak){peak=p.alt;peakMin=t;}
+    if(p.alt<=-0.833){arr[t]=0;continue;}
+    if(rise===null)rise=t; set=t;
+    if(p.alt<MIN_ALT){arr[t]=2;continue;}             // 低すぎる斜光は実質日陰扱い
+    if(Math.abs(angDiff(p.az,winAz))>=90){arr[t]=3;continue;}   // 窓の裏側
+    let blocked=false;
+    if(H>0&&o.bh>0){
+      const db=angDiff(p.az,winAz);                   // 建物は窓の正面にあるとみなす
+      if(Math.abs(db)<89.5){
+        const lateral=Math.abs(o.bd*Math.tan(db*RAD));
+        if(lateral<=o.bw/2){
+          const ray=(o.bd/Math.cos(db*RAD))*Math.tan(p.alt*RAD);
+          if(ray<H)blocked=true;
+        }
+      }
+    }
+    arr[t]=blocked?2:1;
+  }
+  // 連続して日が入る帯を拾う（20分以内の途切れはつなぎ、10分未満の細切れは捨てる）
+  const segs=[];let st=null;
+  for(let t=0;t<=1440;t++){
+    const on=t<1440&&arr[t]===1;
+    if(on&&st===null)st=t;
+    if(!on&&st!==null){
+      if(segs.length&&st-segs[segs.length-1][1]<=20)segs[segs.length-1][1]=t;
+      else segs.push([st,t]);
+      st=null;
+    }
+  }
+  const keep=segs.filter(g=>g[1]-g[0]>=10);
+  keep.forEach(g=>{for(let t=g[0];t<g[1];t++)if(arr[t]!==1)arr[t]=2;});
+  segs.filter(g=>g[1]-g[0]<10).forEach(g=>{for(let t=g[0];t<g[1];t++)arr[t]=2;});
+  const sunMin=keep.reduce((a,g)=>a+(g[1]-g[0]),0);
+  let regMin=0;keep.forEach(g=>regMin+=Math.max(0,Math.min(g[1],960)-Math.max(g[0],480)));
+  return {arr,rise,set,peak,peakMin,sunMin,regMin,segs:keep,
+          first:keep.length?keep[0][0]:null,last:keep.length?keep[keep.length-1][1]:null};
+}
+function segText(segs){
+  if(!segs.length)return"—";
+  const t=segs.slice(0,2).map(g=>fmtT(g[0])+"〜"+fmtT(g[1])).join(" / ");
+  return segs.length>2?t+" ほか":t;
+}
+
+/* ===== 描画 ===== */
+const COL={1:"#F5A623",2:"#7B8FA8",3:"#DDE3EA"};
+function drawTimeline(r){
+  const W=400,x0=32,x1=392,y=30,h=26;
+  const a=Math.max(0,(r.rise??300)-30), b=Math.min(1439,(r.set??1140)+30);
+  const px=t=>x0+(t-a)/(b-a)*(x1-x0);
+  let s=`<rect x="${x0}" y="${y}" width="${x1-x0}" height="${h}" fill="#DDE3EA" rx="4"/>`;
+  let run=null;
+  for(let t=a;t<=b;t++){
+    const v=r.arr[t]===0?3:r.arr[t];
+    if(!run)run={v,s:t};
+    else if(run.v!==v){s+=`<rect x="${px(run.s).toFixed(1)}" y="${y}" width="${Math.max(0.6,px(t)-px(run.s)).toFixed(1)}" height="${h}" fill="${COL[run.v]}"/>`;run={v,s:t};}
+  }
+  if(run)s+=`<rect x="${px(run.s).toFixed(1)}" y="${y}" width="${Math.max(0.6,px(b)-px(run.s)).toFixed(1)}" height="${h}" fill="${COL[run.v]}"/>`;
+  s+=`<rect x="${x0}" y="${y}" width="${x1-x0}" height="${h}" fill="none" stroke="#B8C2CC" rx="4"/>`;
+  for(let hh=Math.ceil(a/60);hh<=Math.floor(b/60);hh++){
+    if(hh%2)continue;
+    const X=px(hh*60);
+    s+=`<line x1="${X.toFixed(1)}" y1="${y+h}" x2="${X.toFixed(1)}" y2="${y+h+4}" stroke="#B8C2CC"/>`;
+    s+=`<text x="${X.toFixed(1)}" y="${y+h+15}" font-size="9.5" fill="#5D6D7E" text-anchor="middle">${hh}</text>`;
+  }
+  const clamp=v=>Math.max(36,Math.min(364,v));
+  if(r.rise!=null)s+=`<text x="${clamp(px(r.rise)).toFixed(1)}" y="${y-6}" font-size="9.5" fill="#5D6D7E" text-anchor="middle">日の出 ${fmtT(r.rise)}</text>`;
+  if(r.set!=null)s+=`<text x="${clamp(px(r.set)).toFixed(1)}" y="${y-6}" font-size="9.5" fill="#5D6D7E" text-anchor="middle">日の入 ${fmtT(r.set)}</text>`;
+  const cx=px(S.t);
+  s+=`<line x1="${cx.toFixed(1)}" y1="${y-2}" x2="${cx.toFixed(1)}" y2="${y+h+2}" stroke="#1B2A41" stroke-width="2"/>`;
+  s+=`<text x="200" y="88" font-size="9.5" fill="#5D6D7E" text-anchor="middle">太陽高度5度以下の朝夕の斜光は、日照に数えていません</text>`;
+  document.getElementById("timeline").innerHTML=s;
+}
+
+function drawSection(dt){
+  const W=400,H=220,gy=176,x0=26;
+  const p=sunPos(dt,S.t,S.lat,S.lon);
+  const db=angDiff(p.az,S.winAz);
+  const inFront=Math.abs(db)<89.5;
+  const effD=inFront?S.bd/Math.cos(db*RAD):S.bd;
+  const lateral=inFront?Math.abs(S.bd*Math.tan(db*RAD)):999;
+  const beside=lateral>S.bw/2;
+  const span=Math.max(effD*1.55,14);
+  const sc=(W-x0-26)/span;
+  const bx=x0+effD*sc;
+  const bh=S.bh*sc*0.9, sill=S.sill*sc*0.9;
+  let s=`<rect x="0" y="0" width="${W}" height="${H}" fill="#F4F6F8"/>`;
+  // 空
+  s+=`<rect x="0" y="0" width="${W}" height="${gy}" fill="${p.alt>0?"#E8F1FA":"#D4DCE6"}"/>`;
+  s+=`<line x1="0" y1="${gy}" x2="${W}" y2="${gy}" stroke="#8A9AAB" stroke-width="2"/>`;
+  // 自宅
+  const hw=34,hh=Math.max(30,sill+26);
+  s+=`<rect x="${x0-hw}" y="${gy-hh}" width="${hw}" height="${hh}" fill="#fff" stroke="#1B2A41" stroke-width="1.5"/>`;
+  s+=`<polygon points="${x0-hw-5},${gy-hh} ${x0-hw/2},${gy-hh-14} ${x0+5},${gy-hh}" fill="#1B2A41"/>`;
+  const wy=gy-sill-9;
+  s+=`<rect x="${x0-13}" y="${wy}" width="13" height="15" fill="${p.alt>0?"#FFF6DE":"#C9D3DE"}" stroke="#1B2A41" stroke-width="1.2"/>`;
+  s+=`<text x="${x0-6}" y="${gy+13}" font-size="9" fill="#5D6D7E" text-anchor="middle">この窓</text>`;
+  // 前の建物
+  if(S.bh>0&&!beside&&inFront){
+    s+=`<rect x="${bx}" y="${gy-bh}" width="${Math.max(24,26)}" height="${bh}" fill="#C9D3DE" stroke="#5D6D7E" stroke-width="1.4"/>`;
+    s+=`<text x="${bx+13}" y="${gy-bh-6}" font-size="9.5" fill="#5D6D7E" text-anchor="middle">${S.bh}m</text>`;
+    // 距離
+    s+=`<line x1="${x0}" y1="${gy+22}" x2="${bx}" y2="${gy+22}" stroke="#5D6D7E" stroke-dasharray="3 2"/>`;
+    s+=`<text x="${(x0+bx)/2}" y="${gy+34}" font-size="9.5" fill="#5D6D7E" text-anchor="middle">${effD.toFixed(1)}m</text>`;
+  }else if(S.bh>0){
+    s+=`<text x="${W/2}" y="${gy+30}" font-size="10" fill="#5D6D7E" text-anchor="middle">この時刻、太陽は建物の横（${lateral>900?"裏":"外"}）にあります</text>`;
+  }
+  // 太陽と光線
+  if(p.alt>0&&Math.abs(db)<90){
+    const ry=Math.tan(p.alt*RAD);
+    const sy=gy-(W-30-x0)*ry*0.9;              // 画面右端に置いたときの太陽の高さ
+    const syC=Math.max(24,sy);                  // 上にはみ出すなら手前に引き寄せる
+    const sxC=Math.min(W-30,x0+(gy-syC)/(0.9*ry));
+    const blocked=(S.bh>0&&!beside&&inFront&&(effD*ry)<(S.bh-S.sill));
+    if(blocked){
+      // 光線は前の建物の壁で止まる（壁のどの高さに当たっているかを見せる）
+      const hitM=S.sill+effD*ry, hy=gy-hitM*sc*0.9;
+      s+=`<line x1="${sxC.toFixed(1)}" y1="${syC.toFixed(1)}" x2="${bx.toFixed(1)}" y2="${hy.toFixed(1)}" stroke="#F5A623" stroke-width="2.5"/>`;
+      s+=`<line x1="${bx.toFixed(1)}" y1="${hy.toFixed(1)}" x2="${x0-6}" y2="${wy+7}" stroke="#7B8FA8" stroke-width="2" stroke-dasharray="4 4" opacity=".55"/>`;
+      s+=`<circle cx="${bx.toFixed(1)}" cy="${hy.toFixed(1)}" r="3.5" fill="#F5A623"/>`;
+      s+=`<text x="${(bx-6).toFixed(1)}" y="${(hy-6).toFixed(1)}" font-size="9" fill="#9A6A00" text-anchor="end">壁の${hitM.toFixed(1)}mの高さ止まり</text>`;
+    }else{
+      s+=`<line x1="${sxC.toFixed(1)}" y1="${syC.toFixed(1)}" x2="${x0-6}" y2="${wy+7}" stroke="#F5A623" stroke-width="2.5"/>`;
+    }
+    s+=`<circle cx="${sxC.toFixed(1)}" cy="${syC.toFixed(1)}" r="11" fill="#F5A623"/>`;
+    s+=`<text x="${(sxC-32).toFixed(1)}" y="${(syC-13).toFixed(1)}" font-size="9.5" fill="#5D6D7E" text-anchor="middle">高度${p.alt.toFixed(0)}°</text>`;
+    // 地面の影
+    if(S.bh>0&&!beside&&inFront){
+      const shadow=S.bh/ry*sc, sxL=Math.max(0,bx-shadow);
+      s+=`<rect x="${sxL.toFixed(1)}" y="${gy}" width="${(bx-sxL).toFixed(1)}" height="7" fill="#7B8FA8" opacity=".55"/>`;
+      s+=`<text x="${Math.min(bx-14,Math.max(74,(sxL+bx)/2)).toFixed(1)}" y="${gy+13}" font-size="9" fill="#5D6D7E" text-anchor="middle">影の長さ ${(S.bh/ry).toFixed(1)}m</text>`;
+    }
+    if(blocked)s+=`<text x="200" y="${16}" font-size="11.5" font-weight="bold" fill="#C0392B" text-anchor="middle">影に入っています</text>`;
+    else s+=`<text x="200" y="${16}" font-size="11.5" font-weight="bold" fill="#1E8449" text-anchor="middle">日が当たっています</text>`;
+  }else{
+    s+=`<text x="200" y="16" font-size="11.5" font-weight="bold" fill="#5D6D7E" text-anchor="middle">${p.alt<=0?"日の出前／日の入り後":"太陽はこの窓の裏側です"}</text>`;
+  }
+  document.getElementById("section").innerHTML=s;
+  document.getElementById("tSun").textContent=`　高度 ${p.alt>0?p.alt.toFixed(0)+"°":"—"}／方位 ${p.az.toFixed(0)}°`;
+}
+
+function drawCompass(dt,r){
+  const cx=200,cy=146,R=96;
+  let s=`<rect x="0" y="0" width="400" height="292" fill="#F4F6F8"/>`;
+  const pt=(az,rr)=>[cx+rr*Math.sin(az*RAD),cy-rr*Math.cos(az*RAD)];
+  // 窓の向く範囲
+  const a1=S.winAz-90,a2=S.winAz+90;
+  const [x1,y1]=pt(a1,R),[x2,y2]=pt(a2,R);
+  s+=`<path d="M${cx},${cy} L${x1.toFixed(1)},${y1.toFixed(1)} A${R},${R} 0 0 1 ${x2.toFixed(1)},${y2.toFixed(1)} Z" fill="#FFF6DE"/>`;
+  s+=`<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#B8C2CC"/>`;
+  s+=`<circle cx="${cx}" cy="${cy}" r="${R*0.5}" fill="none" stroke="#DDE3EA"/>`;
+  ["北","東","南","西"].forEach((n,i)=>{const[a,b]=pt(i*90,R+13);
+    s+=`<text x="${a.toFixed(1)}" y="${(b+4).toFixed(1)}" font-size="11" font-weight="bold" fill="#5D6D7E" text-anchor="middle">${n}</text>`;});
+  // 太陽の通り道
+  let path="";
+  for(let t=0;t<1440;t+=6){const p=sunPos(dt,t,S.lat,S.lon);
+    if(p.alt<=0)continue;
+    const rr=R*(1-p.alt/90);
+    const[a,b]=pt(p.az,rr);
+    path+=(path?" L":"M")+a.toFixed(1)+","+b.toFixed(1);}
+  s+=`<path d="${path}" fill="none" stroke="#F5A623" stroke-width="2" opacity=".65"/>`;
+  // 前の建物
+  if(S.bh>0){
+    const bd=Math.min(R*0.72,R*0.28+S.bd*3);
+    const half=Math.atan((S.bw/2)/S.bd)*DEG;
+    const[bx1,by1]=pt(S.winAz-half,bd+16),[bx2,by2]=pt(S.winAz+half,bd+16),[bx3,by3]=pt(S.winAz+half,bd),[bx4,by4]=pt(S.winAz-half,bd);
+    s+=`<polygon points="${bx1.toFixed(1)},${by1.toFixed(1)} ${bx2.toFixed(1)},${by2.toFixed(1)} ${bx3.toFixed(1)},${by3.toFixed(1)} ${bx4.toFixed(1)},${by4.toFixed(1)}" fill="#7B8FA8" opacity=".8"/>`;
+  }
+  // 家
+  s+=`<rect x="${cx-7}" y="${cy-7}" width="14" height="14" fill="#1B2A41"/>`;
+  const[wx,wy]=pt(S.winAz,15);
+  s+=`<line x1="${cx}" y1="${cy}" x2="${wx.toFixed(1)}" y2="${wy.toFixed(1)}" stroke="#F5A623" stroke-width="3"/>`;
+  // 現在の太陽
+  const p=sunPos(dt,S.t,S.lat,S.lon);
+  if(p.alt>0){
+    const rr=R*(1-p.alt/90);const[a,b]=pt(p.az,rr);
+    s+=`<circle cx="${a.toFixed(1)}" cy="${b.toFixed(1)}" r="9" fill="#F5A623" stroke="#fff" stroke-width="2"/>`;
+    // 影の向き
+    const sh=Math.min(R,(S.bh||6.5)/Math.tan(Math.max(3,p.alt)*RAD)*3);
+    const[ex,ey]=pt((p.az+180)%360,sh);
+    s+=`<line x1="${cx}" y1="${cy}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}" stroke="#7B8FA8" stroke-width="6" opacity=".5" stroke-linecap="round"/>`;
+  }
+  s+=`<text x="200" y="16" font-size="10" fill="#5D6D7E" text-anchor="middle">外側の円ほど太陽が低い／中心に近いほど高い</text>`;
+  s+=`<rect x="46" y="266" width="10" height="10" fill="#FFF6DE" stroke="#B8C2CC"/><text x="61" y="275" font-size="10" fill="#5D6D7E">この窓から見える空</text>`;
+  s+=`<rect x="186" y="266" width="10" height="10" fill="#7B8FA8"/><text x="201" y="275" font-size="10" fill="#5D6D7E">前の建物</text>`;
+  s+=`<rect x="266" y="266" width="10" height="10" fill="#F5A623"/><text x="281" y="275" font-size="10" fill="#5D6D7E">太陽の通り道</text>`;
+  document.getElementById("compass").innerHTML=s;
+}
+
+/* ===== 更新 ===== */
+function rank(min){
+  const h=min/60;
+  if(S.sea!=="w"){ // 冬至以外は参考表示
+    if(h>=5)return{t:"日当たり良好",c:"#1E8449",m:"◎"};
+    if(h>=3)return{t:"合格ライン",c:"#1E8449",m:"○"};
+    if(h>=1.5)return{t:"要注意",c:"#F5A623",m:"△"};
+    return{t:"日陰",c:"#C0392B",m:"✕"};
+  }
+  if(h>=5)return{t:"◎ 日当たり良好",c:"#2ECC71",m:"◎"};
+  if(h>=3)return{t:"○ 合格ライン",c:"#F5A623",m:"○"};
+  if(h>=1.5)return{t:"△ 要注意",c:"#F5A623",m:"△"};
+  return{t:"✕ 冬は日陰の家",c:"#E74C3C",m:"✕"};
+}
+function noteFor(r,dt){
+  const h=r.sunMin/60, d=DIRNAME[S.winAz];
+  if(S.bh===0)return`目の前に遮るものがない前提の計算です。<b>南側が空地・駐車場・畑なら、そこに家が建つ可能性</b>を必ず確認してください。建ってしまえば、この数字は一気に落ちます。`;
+  if(Math.abs(angDiff(180,S.winAz))>=90)return`${d}向きの窓には、そもそも直射日光がほとんど回りません。数字の良し悪しではなく、<b>この部屋を主要な居室にしない</b>という設計判断で対応してください。`;
+  if(h>=5)return`${S.bd}m先に${S.bh}mの建物があっても、冬至に${fmtH(r.sunMin)}入ります。<b>この日当たりは物件の武器</b>です。募集図面と内見時に前面が抜けていることを見せてください。`;
+  if(h>=3)return`合格ラインです。ただし前面の建物があと1階分高くなる、または距離が2m縮まると一気に落ちます。<b>南側が更地・古家なら、建て替えのリスク</b>を織り込んでください。`;
+  if(h>=1.5)return`冬の昼間、日が入るのは${fmtH(r.sunMin)}だけです。<b>家賃で強気に出られない物件</b>。指値の材料にしつつ、2階を主寝室にする・洗濯物は室内干し前提など、運用でカバーする設計を先に決めてください。`;
+  return`冬至はほぼ1日中、前の建物の影に入ります。<b>湿気・カビ・結露の修繕費を先に見込む</b>こと。買うなら、その分の指値が通る場合だけです。`;
+}
+function update(){
+  const dt=seaDate(S.sea);
+  const r=calcDay(dt,S.winAz);
+  const rk=rank(r.sunMin);
+  document.getElementById("vCap").textContent=`${dt.label}／${DIRNAME[S.winAz]}向き・${S.sill===1?"1階":"2階"}の窓`;
+  document.getElementById("vRank").textContent=rk.t;
+  document.getElementById("vRank").style.color=rk.c;
+  document.getElementById("vHours").innerHTML=r.sunMin>0
+    ?`${Math.floor(r.sunMin/60)}<small>時間</small>${String(r.sunMin%60).padStart(2,"0")}<small>分</small>`
+    :`0<small>時間</small>`;
+  document.getElementById("vSpan").textContent=segText(r.segs);
+  document.getElementById("vSpan").style.fontSize=r.segs.length>1?"12.5px":"15px";
+  document.getElementById("vReg").textContent=r.regMin>0?fmtH(r.regMin):"0分";
+  document.getElementById("vNote").innerHTML=noteFor(r,dt);
+  drawTimeline(r);drawSection(dt);drawCompass(dt,r);
+  // ヒント
+  const noon=sunPos(dt,r.peakMin,S.lat,S.lon);
+  const need=S.bh>0?(S.bh-S.sill)/Math.tan(noon.alt*RAD):0;
+  document.getElementById("tip").innerHTML=S.bh>0
+    ?`<b>南中（${fmtT(r.peakMin)}・高度${noon.alt.toFixed(0)}°）でも、${S.bh}mの建物の影は${(S.bh/Math.tan(noon.alt*RAD)).toFixed(1)}m伸びます。</b><br>この窓に真昼の日を入れたいなら、前の建物から<b>${need.toFixed(1)}m以上</b>離れている必要があります（今は${S.bd}m）。`
+    :`<b>遮るものなしの計算です。</b>この地点の${dt.label}の南中高度は${noon.alt.toFixed(0)}度。仮に目の前に2階建て（6.5m）が建つと、影は${(6.5/Math.tan(noon.alt*RAD)).toFixed(1)}m伸びます。`;
+  updateTables(dt);
+}
+function updateTables(dt){
+  // 方位別
+  const rows=[0,45,90,135,180,225,270,315].map(az=>({az,r:calcDay(dt,az)}));
+  const max=Math.max(60,...rows.map(x=>x.r.sunMin));
+  let h=`<tr><th>窓の向き</th><th>日が入る時間</th><th>時間帯</th></tr>`;
+  rows.sort((a,b)=>b.r.sunMin-a.r.sunMin).forEach(x=>{
+    h+=`<tr class="${x.az===S.winAz?"me":""}"><td class="dir">${DIRNAME[x.az]}</td>
+      <td><b>${x.r.sunMin>0?fmtH(x.r.sunMin):"0分"}</b>
+      <div class="barwrap"><span class="bar" style="width:${(x.r.sunMin/max*100).toFixed(0)}%"></span></div></td>
+      <td style="font-size:11.5px">${segText(x.r.segs)}</td></tr>`;
+  });
+  document.getElementById("dirTable").innerHTML=h;
+  document.getElementById("dirTableCond").innerHTML=
+    `条件：<b>${S.name}</b>／${dt.label}／目の前に<b>${S.bh===0?"遮るものなし":S.bh+"mの建物が"+S.bd+"m先"}</b>／${S.sill===1?"1階":"2階"}の窓`;
+  // 季節別
+  let h2=`<tr><th>時期</th><th>南中高度</th><th>この窓の日照</th></tr>`;
+  [["w","冬至 12/21"],["e","春秋分 3/21"],["s","夏至 6/21"]].forEach(([k,nm])=>{
+    const d2=seaDate(k), r2=calcDay(d2,S.winAz), p2=sunPos(d2,r2.peakMin,S.lat,S.lon);
+    h2+=`<tr class="${k===S.sea?"me":""}"><td class="dir">${nm}</td><td>${p2.alt.toFixed(0)}°</td>
+      <td><b>${r2.sunMin>0?fmtH(r2.sunMin):"0分"}</b></td></tr>`;
+  });
+  document.getElementById("seaTable").innerHTML=h2;
+  // 影の長さ表
+  const dw=seaDate("w"), rw=calcDay(dw,180), pw=sunPos(dw,rw.peakMin,S.lat,S.lon);
+  let h3=`<table><tr><th>前の建物</th><th>冬至の真昼の影</th><th>必要な距離</th></tr>`;
+  [["平屋 4m",4],["2階建て 6.5m",6.5],["3階建て 9.5m",9.5],["5階建て 14m",14]].forEach(([nm,H])=>{
+    h3+=`<tr><td class="dir">${nm}</td><td>${(H/Math.tan(pw.alt*RAD)).toFixed(1)}m</td>
+      <td><b>${((H-1)/Math.tan(pw.alt*RAD)).toFixed(1)}m</b></td></tr>`;
+  });
+  h3+=`</table><div style="font-size:11px;color:var(--gray);margin-top:6px">※${S.name}の冬至（南中高度${pw.alt.toFixed(1)}°）で計算。「必要な距離」＝1階の窓に真昼の日が入るために空けたい距離。</div>`;
+  document.getElementById("shadowTable").innerHTML=h3;
+}
+
+/* ===== UI ===== */
+function pickGroup(sel,fn){
+  document.querySelectorAll(sel).forEach(b=>b.addEventListener("click",()=>{
+    document.querySelectorAll(sel).forEach(x=>x.classList.remove("sel"));
+    b.classList.add("sel");fn(b);update();
+  }));
+}
+document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on"));
+  document.querySelectorAll("section").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on");document.getElementById(b.dataset.t).classList.add("on");
+  window.scrollTo({top:0,behavior:"smooth"});
+}));
+pickGroup(".p-dir",b=>S.winAz=+b.dataset.az);
+pickGroup(".p-floor",b=>S.sill=+b.dataset.h);
+pickGroup(".p-h",b=>S.bh=+b.dataset.h);
+pickGroup(".p-sea",b=>S.sea=b.dataset.s);
+pickGroup(".p-pref",b=>{S.lat=+b.dataset.la;S.lon=+b.dataset.lo;S.name=b.dataset.nm;showPlace();});
+function showPlace(){
+  document.getElementById("placeName").textContent=S.name;
+  document.getElementById("placeLL").textContent=`（北緯 ${S.lat.toFixed(3)}°）`;
+}
+document.getElementById("dist").addEventListener("input",e=>{
+  S.bd=+e.target.value;document.getElementById("distV").innerHTML=S.bd.toFixed(1)+'<span>m</span>';update();});
+document.getElementById("wid").addEventListener("input",e=>{
+  S.bw=+e.target.value;document.getElementById("widV").innerHTML=S.bw+'<span>m</span>';update();});
+document.getElementById("tslider").addEventListener("input",e=>{
+  S.t=+e.target.value;document.getElementById("tV").innerHTML=fmtT(S.t)+'<span id="tSun"></span>';
+  drawSection(seaDate(S.sea));drawTimeline(calcDay(seaDate(S.sea),S.winAz));drawCompass(seaDate(S.sea));});
+
+async function search(){
+  const q=document.getElementById("addr").value.trim();
+  if(!q)return;
+  const el=document.getElementById("place");
+  el.innerHTML="検索中…";
+  try{
+    const res=await fetch("https://msearch.gsi.go.jp/address-search/AddressSearch?q="+encodeURIComponent(q));
+    const j=await res.json();
+    if(!j.length){el.innerHTML='見つかりませんでした。<b>市区町村名まで</b>で試してください（例：茨城県牛久市）。';return;}
+    S.lon=j[0].geometry.coordinates[0];S.lat=j[0].geometry.coordinates[1];
+    S.name=j[0].properties.title;
+    document.querySelectorAll(".p-pref").forEach(x=>x.classList.remove("sel"));
+    el.innerHTML='現在の地点：<b id="placeName"></b>　<span id="placeLL"></span>';
+    showPlace();update();
+  }catch(err){
+    el.innerHTML='通信できませんでした。下のボタンから都県を選んでください。';
+  }
+}
+document.getElementById("go").addEventListener("click",search);
+document.getElementById("addr").addEventListener("keydown",e=>{if(e.key==="Enter")search();});
+
+showPlace();update();
+</script>
+</body>
+</html>
